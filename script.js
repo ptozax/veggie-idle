@@ -496,11 +496,11 @@ function buildStars(){
   starsEl.innerHTML=h;
 
   // ต้นไม้ประดับตามแนวเนินเขา
-  const trees=['🌲','🌳','🌴','🌲','🌳'];
+  const trees=['🌲','🌳','🌴','🌲','🌳',];
   let th='';
   for(let i=0;i<11;i++){
-    const l=3+Math.random()*94, s=40+Math.random()*30, b=Math.random()*16;
-    th+=`<div class="tree" style="left:${l}%;bottom:${b}px;font-size:${Math.round(s)}px">${trees[Math.floor(Math.random()*trees.length)]}</div>`;
+    const l=3+Math.random()*94, s=40+Math.random()*30, b=12;
+    th+=`<div class="tree" style="left:${l}%;bottom:${b}%;font-size:${Math.round(s)}px">${trees[Math.floor(Math.random()*trees.length)]}</div>`;
   }
   $('#hills').insertAdjacentHTML('beforeend', th);
 }

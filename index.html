@@ -30,7 +30,7 @@
     filter:blur(6px);will-change:left,top;}
   #celestial{position:absolute;font-size:62px;left:50%;top:60%;
     filter:drop-shadow(0 0 26px rgba(255,225,140,.9));transition:filter 2s;
-    will-change:left,top;z-index:2;}
+    will-change:left,top;z-index:0;}
   .star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;
     opacity:0;animation:tw 3s infinite ease-in-out;box-shadow:0 0 4px #fff;}
   @keyframes tw{0%,100%{opacity:.15}50%{opacity:.95}}
@@ -52,7 +52,7 @@
     box-shadow:0 -10px 40px rgba(0,0,0,.35) inset;}
   #ground::before{content:'';position:absolute;left:0;right:0;top:-16px;height:18px;
     background:linear-gradient(#74bd4f,#519536);
-    border-radius:50% 50% 0 0 / 100% 100% 0 0;
+    border-radius:100% 100% 0 0 / 100% 100% 0 0;
     box-shadow:0 4px 10px rgba(0,0,0,.2);}
 
   /* โทนแสงตามเวลา (กลางวัน/เย็น/กลางคืน) คลุมทั้งฉาก */
