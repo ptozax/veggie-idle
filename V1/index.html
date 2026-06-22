@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ฟาร์มผักไอเดิล — Wallpaper</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    color: #eee;
+    position: relative;
+    /* sky gradient changes with time of day via JS */
+    background: linear-gradient(180deg, #6cb6e0 0%, #a8d8ef 45%, #cde3a8 70%, #7bb661 100%);
+    transition: background 4s ease;
+    user-select: none;
+  }
+
+  /* ─── SCENERY LAYERS ─── */
+  #sun { position: fixed; top: 8%; right: 12%; font-size: 90px; filter: drop-shadow(0 0 30px #ffe07088); transition: all 4s ease; z-index: 1; }
+  #hills {
+    position: fixed; bottom: 0; left: 0; width: 100%; height: 42%;
+    background:
+      radial-gradient(120% 100% at 20% 100%, #6ba84f 0%, #5a9442 60%, transparent 61%),
+      radial-gradient(120% 100% at 80% 100%, #5d9a45 0%, #4e8639 60%, transparent 61%),
+      linear-gradient(180deg, #7bb661 0%, #5e9647 100%);
+    z-index: 1;
+  }
+  .cloud { position: fixed; font-size: 54px; animation: floatCloud linear infinite; opacity: 0.85; pointer-events: none; z-index: 2; color: #fff; }
+  @keyframes floatCloud { from { transform: translateX(-160px); } to { transform: translateX(110vw); } }
+  .bird { position: fixed; font-size: 20px; animation: floatCloud linear infinite; opacity: 0.6; z-index: 2; }
+
+  /* decorative ambient veg scattered on the hills */
+  .scenery-veg { position: fixed; z-index: 2; opacity: 0.9; pointer-events: none; animation: sway 4s ease-in-out infinite; transform-origin: bottom center; }
+  @keyframes sway { 0%,100%{transform:rotate(-3deg);}50%{transform:rotate(3deg);} }
+
+  /* ─── GAME PANEL (bottom-left, out of the way of desktop icons) ─── */
+  #game {
+    position: fixed;
+    right: 32px; bottom: 72px;
+    background: rgba(20, 40, 24, 0.82);
+    backdrop-filter: blur(10px);
+    border-radius: 22px;
+    padding: 18px 22px 16px;
+    width: 520px;
+    max-width: calc(100vw - 64px);
+    border: 1px solid #4a7050;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.4);
+    z-index: 20;
+  }
+
+  #header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  #coins { font-size: 22px; font-weight: 600; }
+  #coins span { color: #f5c542; }
+  #clock { font-size: 13px; color: #cfe8cf; text-align: center; }
+  #clock #time-emoji { font-size: 18px; }
+  #level-box { font-size: 12px; color: #aed8ae; text-align: right; min-width: 110px; }
+  #xp-bar-wrap { height: 5px; background: #2e4a2e; border-radius: 4px; margin-top: 3px; }
+  #xp-bar { height: 5px; background: #4caf50; border-radius: 4px; transition: width 0.4s; }
+
+  #stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 7px; margin-bottom: 12px; }
+  .stat-card { background: rgba(10,25,12,0.6); border-radius: 10px; padding: 7px 8px; }
+  .stat-card .s-label { font-size: 10px; color: #8fc88f; }
+  .stat-card .s-val { font-size: 15px; font-weight: 600; }
+
+  #farm-wrap { position: relative; margin-bottom: 12px; }
+  #farm-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 9px; }
+  .plot {
+    background: rgba(42,68,48,0.85); border: 1.5px solid #3a6040;
+    border-radius: 12px; aspect-ratio: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; position: relative; overflow: hidden;
+    transition: transform 0.1s, border-color 0.2s;
+  }
+  .plot:hover { transform: scale(1.06); border-color: #6ab06a; }
+  .plot:active { transform: scale(0.95); }
+  .plot .emoji { font-size: 34px; line-height: 1; }
+  .plot .label { font-size: 10px; color: #9fd89f; margin-top: 2px; }
+  .plot .prog-bar { position:absolute; bottom:0; left:0; height:4px; background:#4caf50; border-radius:0 0 9px 9px; transition: width 0.4s linear; }
+  .plot .fert-badge { position:absolute; top:3px; right:3px; font-size:12px; }
+  .plot.locked { opacity: 0.3; cursor: not-allowed; }
+  .plot.locked:hover { transform: none; }
+  .plot.ready { border-color: #4caf50; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 #4caf5060;}50%{box-shadow:0 0 0 7px #4caf5010;} }
+  .plot.watered { border-color: #4fc3f7; }
+  .plot.wilted .emoji { filter: grayscale(1); }
+
+  #gardener { position: absolute; font-size: 32px; pointer-events: none; transition: left 0.6s ease, top 0.6s ease; z-index: 10; filter: drop-shadow(0 2px 4px #0006); }
+  #gardener-bubble { position: absolute; background: #fffde7ee; color: #333; font-size: 11px; border-radius: 8px; padding: 3px 7px; pointer-events: none; z-index: 11; white-space: nowrap; display: none; border: 1px solid #c8b400; }
+
+  #tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tab-btn { flex:1; padding: 6px; background: rgba(10,25,12,0.6); border: 1.5px solid #3a5e3a; border-radius: 8px; cursor: pointer; font-size: 12px; color: #aed8ae; transition: background 0.15s; }
+  .tab-btn:hover, .tab-btn.active { background: #2a4430; border-color: #4caf50; color: #fff; }
+
+  #seed-list { display: grid; grid-template-columns: repeat(6,1fr); gap: 6px; margin-bottom: 4px; }
+  .seed-btn { background: rgba(10,25,12,0.6); border: 1.5px solid #3a5e3a; border-radius: 10px; padding: 7px 3px; text-align: center; cursor: pointer; transition: background 0.15s; }
+  .seed-btn:hover { background: #2a4430; }
+  .seed-btn.selected { border-color: #4caf50; background: #2a4430; }
+  .seed-btn .s-emoji { font-size: 22px; display: block; }
+  .seed-btn .s-name { font-size: 9px; color: #9fd89f; display: block; }
+  .seed-btn .s-price { font-size: 10px; font-weight: 600; color: #f5c542; display: block; }
+  .seed-btn.dim { opacity: 0.35; }
+
+  #upgrade-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .upg-btn { background: rgba(10,25,12,0.6); border: 1.5px solid #3a5e3a; border-radius: 10px; padding: 9px 10px; cursor: pointer; transition: background 0.15s; }
+  .upg-btn:hover { background: #2a4430; border-color: #6ab06a; }
+  .upg-btn.maxed { opacity: 0.4; cursor: default; }
+  .upg-btn .u-title { font-size: 13px; font-weight: 600; }
+  .upg-btn .u-desc { font-size: 11px; color: #9fd89f; margin-top: 2px; }
+  .upg-btn .u-cost { font-size: 11px; color: #f5c542; margin-top: 4px; }
+
+  #tool-list { display: flex; gap: 8px; }
+  .tool-btn { flex:1; padding: 8px 6px; background: rgba(10,25,12,0.6); border: 1.5px solid #3a5e3a; border-radius: 10px; cursor: pointer; font-size: 12px; color: #fff; text-align: center; transition: background 0.15s; }
+  .tool-btn:hover { background: #2a4430; }
+  .tool-btn.active-tool { border-color: #4caf50; background: #2a4430; }
+  .tool-btn .t-emoji { font-size: 20px; display: block; }
+  .tool-btn .t-cost { font-size: 10px; color: #f5c542; }
+
+  #unlock-btn { display: none; width: 100%; padding: 8px; background: rgba(10,25,12,0.6); border: 1.5px solid #3a5e3a; border-radius: 10px; cursor: pointer; font-size: 13px; color: #fff; margin-bottom: 10px; }
+  #unlock-btn:hover { background: #2a4430; border-color: #6ab06a; }
+
+  #log { font-size: 12px; color: #aed8ae; min-height: 16px; text-align: center; margin-top: 8px; }
+
+  #toast { position: fixed; bottom: 50%; left: 50%; transform: translateX(-50%); background: #f5c542; color: #1a2e1a; font-weight: 600; padding: 8px 22px; border-radius: 20px; font-size: 15px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 99; }
+  #toast.show { opacity: 1; }
+
+  /* welcome-back idle popup */
+  #welcome { position: fixed; top: 32px; right: 32px; background: rgba(20,40,24,0.92); border: 1px solid #4a7050; border-radius: 16px; padding: 16px 20px; z-index: 30; max-width: 280px; display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+  #welcome h3 { font-size: 15px; margin-bottom: 6px; color: #f5c542; }
+  #welcome p { font-size: 13px; color: #cfe8cf; line-height: 1.5; }
+  #welcome button { margin-top: 10px; padding: 6px 16px; background: #4caf50; border: none; border-radius: 8px; color: #fff; cursor: pointer; font-size: 13px; }
+
+  /* wandering critters */
+  #cat { position: fixed; bottom: 6%; left: -60px; font-size: 38px; z-index: 6; cursor: pointer; transition: left 8s linear, transform 0.2s; filter: drop-shadow(0 2px 4px #0005); }
+  #cat:hover { transform: scale(1.15); }
+  #ufo { position: fixed; top: 14%; left: -80px; font-size: 46px; z-index: 7; cursor: pointer; filter: drop-shadow(0 0 14px #9fffb088); }
+  #ufo-beam { position: fixed; width: 60px; height: 0; background: linear-gradient(180deg,#9fffb066,transparent); z-index: 6; pointer-events: none; transition: height 0.6s; }
+
+  /* small reset link */
+  #reset-link { position: fixed; bottom: 8px; left: 8px; font-size: 10px; color: #ffffff44; cursor: pointer; z-index: 20; }
+  #reset-link:hover { color: #ffffff99; }
+</style>
+</head>
+<body>
+
+<div id="sun">☀️</div>
+<div id="hills"></div>
+
+<div class="cloud" style="top:10%; animation-duration:55s; animation-delay:0s;">☁️</div>
+<div class="cloud" style="top:18%; animation-duration:80s; animation-delay:-30s; font-size:38px; opacity:0.7;">☁️</div>
+<div class="cloud" style="top:6%; animation-duration:95s; animation-delay:-60s; font-size:44px; opacity:0.6;">☁️</div>
+<div class="bird" style="top:24%; animation-duration:38s; animation-delay:-10s;">🕊️</div>
+<div class="bird" style="top:28%; animation-duration:46s; animation-delay:-25s;">🐦</div>
+
+<div class="scenery-veg" style="left:6%; bottom:8%; font-size:46px; animation-delay:0s;">🌻</div>
+<div class="scenery-veg" style="left:88%; bottom:6%; font-size:50px; animation-delay:-1s;">🌳</div>
+<div class="scenery-veg" style="left:78%; bottom:14%; font-size:32px; animation-delay:-2s;">🌷</div>
+<div class="scenery-veg" style="left:14%; bottom:18%; font-size:28px; animation-delay:-1.5s;">🌼</div>
+<div class="scenery-veg" style="left:94%; bottom:20%; font-size:30px; animation-delay:-0.5s;">🦋</div>
+
+<div id="cat">🐈</div>
+<div id="ufo">🛸</div>
+<div id="ufo-beam"></div>
+
+<div id="toast"></div>
+
+<div id="welcome">
+  <h3>🌾 ยินดีต้อนรับกลับ!</h3>
+  <p id="welcome-text"></p>
+  <button onclick="document.getElementById('welcome').style.display='none'">รับเลย</button>
+</div>
+
+<div id="game">
+  <div id="header">
+    <div id="coins">เหรียญ: <span id="coin-val">30</span></div>
+    <div id="clock"><span id="time-emoji">🌤</span><div id="time-text">--:--</div></div>
+    <div id="level-box">
+      Lv.<span id="lv-num">1</span> — <span id="lv-name">มือใหม่</span>
+      <div id="xp-bar-wrap"><div id="xp-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div id="stats">
+    <div class="stat-card"><div class="s-label">เก็บเกี่ยว</div><div class="s-val" id="total-harvested">0</div></div>
+    <div class="stat-card"><div class="s-label">รายได้รวม</div><div class="s-val" id="total-earned">0</div></div>
+    <div class="stat-card"><div class="s-label">แปลงที่ใช้</div><div class="s-val" id="active-plots">0/4</div></div>
+    <div class="stat-card"><div class="s-label">ปุ๋ย 🧪</div><div class="s-val" id="fert-count">0</div></div>
+  </div>
+
+  <div id="farm-wrap">
+    <div id="farm-grid"></div>
+    <div id="gardener">🧑‍🌾</div>
+    <div id="gardener-bubble"></div>
+  </div>
+
+  <button id="unlock-btn"></button>
+
+  <div id="tabs">
+    <button class="tab-btn active" onclick="switchTab('seeds')">🌱 เมล็ด</button>
+    <button class="tab-btn" onclick="switchTab('tools')">🛠 เครื่องมือ</button>
+    <button class="tab-btn" onclick="switchTab('upgrades')">⬆️ อัพเกรด</button>
+  </div>
+
+  <div id="panel-seeds"><div id="seed-list"></div></div>
+  <div id="panel-tools" style="display:none"><div id="tool-list"></div></div>
+  <div id="panel-upgrades" style="display:none"><div id="upgrade-list"></div></div>
+
+  <div id="log">กดที่แปลงเพื่อปลูกผัก</div>
+</div>
+
+<div id="reset-link" onclick="resetGame()">รีเซ็ตเกม</div>
+
+<script>
+/* ─── DATA ─── */
+const SEEDS = [
+  { id:'carrot',   name:'แครอท',      emoji:'🥕', price:5,  time:8000,  reward:12, xp:5,  unlock:0   },
+  { id:'cabbage',  name:'กะหล่ำ',     emoji:'🥬', price:8,  time:14000, reward:22, xp:8,  unlock:30  },
+  { id:'corn',     name:'ข้าวโพด',    emoji:'🌽', price:12, time:22000, reward:35, xp:12, unlock:80  },
+  { id:'tomato',   name:'มะเขือเทศ',  emoji:'🍅', price:18, time:35000, reward:55, xp:18, unlock:200 },
+  { id:'pepper',   name:'พริก',        emoji:'🌶', price:25, time:50000, reward:80, xp:25, unlock:500 },
+  { id:'eggplant', name:'มะเขือยาว',  emoji:'🍆', price:35, time:70000, reward:115,xp:35, unlock:1200},
+];
+const PLOT_COUNT = 8;
+const UNLOCK_COSTS = [0,0,0,0,80,180,400,900];
+const LEVELS = [
+  {xp:0,name:'มือใหม่'},{xp:50,name:'ชาวไร่'},{xp:150,name:'เกษตรกร'},
+  {xp:350,name:'ฟาร์มเมอร์'},{xp:700,name:'ปรมาจารย์'},{xp:1500,name:'เจ้าแห่งฟาร์ม'},
+];
+const UPGRADES = [
+  { id:'speed',       title:'💨 เร็วขึ้น',     desc:'ลดเวลาปลูก 15%',     baseCost:60,  maxLv:5 },
+  { id:'bonus',       title:'💰 โบนัสขาย',    desc:'ได้เหรียญ +20%',      baseCost:80,  maxLv:5 },
+  { id:'autofert',    title:'🤖 คนสวนรดน้ำ',  desc:'รดน้ำเองทุก 30s',     baseCost:120, maxLv:3 },
+  { id:'plots',       title:'🌱 แปลงพิเศษ',   desc:'ปลดล็อกถูกลง 30%',    baseCost:100, maxLv:1 },
+  { id:'autoharvest', title:'🧺 เก็บอัตโนมัติ', desc:'คนสวนเก็บผักสุกเอง',  baseCost:250, maxLv:1 },
+  { id:'autoplant',   title:'🌾 ปลูกอัตโนมัติ', desc:'ปลูกเมล็ดที่เลือกในแปลงว่าง', baseCost:400, maxLv:1 },
+];
+const WEATHERS = [
+  { id:'sunny', emoji:'☀️', label:'แดดจัด', growMult:1   },
+  { id:'cloudy',emoji:'⛅', label:'มีเมฆ',   growMult:0.9 },
+  { id:'rain',  emoji:'🌧', label:'ฝนตก',   growMult:1.4 },
+  { id:'storm', emoji:'⛈', label:'พายุ',    growMult:0.6 },
+];
+
+const SAVE_KEY = 'veggieIdleSave_v1';
+
+/* ─── STATE ─── */
+let coins, selectedSeed, activeTool, plots, totalHarvested, totalEarned, xp, fertilizer, upgradeLevels, weather, weatherTimer;
+let gardenerMoveTimer = 0, autoFertTimer = 0, autoActTimer = 0;
+let luckBonus = 0;          // raised by easter eggs (more golden crops)
+let sunClicks = 0, gardenerClicks = 0;
+let konami = [], achievements = {};
+const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+
+function defaultState() {
+  coins = 30;
+  selectedSeed = SEEDS[0];
+  activeTool = 'plant';
+  plots = Array.from({length:PLOT_COUNT},(_,i)=>({state:'empty',seed:null,plantedAt:0,locked:i>=4,watered:false,wilted:false,fertilized:false,i}));
+  totalHarvested = 0; totalEarned = 0; xp = 0; fertilizer = 0;
+  upgradeLevels = { speed:0, bonus:0, autofert:0, plots:0, autoharvest:0, autoplant:0 };
+  weather = 'sunny'; weatherTimer = 30000;
+  achievements = {};
+}
+
+/* ─── SAVE / LOAD ─── */
+function saveGame() {
+  try {
+    const data = {
+      coins, totalHarvested, totalEarned, xp, fertilizer, upgradeLevels, weather, achievements,
+      selectedSeedId: selectedSeed.id,
+      plots: plots.map(p=>({ state:p.state, seedId:p.seed?p.seed.id:null, plantedAt:p.plantedAt, locked:p.locked, watered:p.watered, wilted:p.wilted, fertilized:p.fertilized, golden:p.golden||false, i:p.i })),
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch(e){}
+}
+
+function loadGame() {
+  let raw;
+  try { raw = localStorage.getItem(SAVE_KEY); } catch(e){ raw=null; }
+  if(!raw){ defaultState(); return; }
+  try {
+    const d = JSON.parse(raw);
+    coins = d.coins; totalHarvested = d.totalHarvested; totalEarned = d.totalEarned;
+    xp = d.xp; fertilizer = d.fertilizer;
+    upgradeLevels = Object.assign({ speed:0, bonus:0, autofert:0, plots:0, autoharvest:0, autoplant:0 }, d.upgradeLevels||{});
+    weather = d.weather||'sunny';
+    achievements = d.achievements||{};
+    weatherTimer = 30000;
+    selectedSeed = SEEDS.find(s=>s.id===d.selectedSeedId) || SEEDS[0];
+    activeTool = 'plant';
+    plots = d.plots.map(p=>({
+      state:p.state, seed:p.seedId?SEEDS.find(s=>s.id===p.seedId):null,
+      plantedAt:p.plantedAt, locked:p.locked, watered:p.watered, wilted:p.wilted, fertilized:p.fertilized, golden:p.golden||false, i:p.i
+    }));
+    // OFFLINE PROGRESS: ripen anything that finished while away
+    const away = Date.now() - (d.savedAt||Date.now());
+    if(away > 5000) computeOffline(away);
+  } catch(e){ defaultState(); }
+}
+
+function computeOffline(awayMs) {
+  let ripened = 0;
+  plots.forEach((p,i)=>{
+    if(p.state==='growing'){
+      const total = effectiveTime(p.seed,p.fertilized)*(p.watered?0.8:1)*(1/(WEATHERS.find(w=>w.id===weather)||WEATHERS[0]).growMult);
+      if(Date.now()-p.plantedAt >= total){ plots[i].state='ready'; ripened++; }
+    }
+  });
+  const mins = Math.floor(awayMs/60000);
+  const wEl = document.getElementById('welcome');
+  const wt = document.getElementById('welcome-text');
+  let msg = `คุณไม่อยู่ไป ${mins>=60?Math.floor(mins/60)+' ชม. ':''}${mins%60} นาที`;
+  if(ripened>0) msg += ` — มีผัก ${ripened} แปลงโตเต็มที่พร้อมเก็บแล้ว! 🧺`;
+  else msg += ` — ผักกำลังเติบโตอยู่ 🌱`;
+  wt.textContent = msg;
+  wEl.style.display = 'block';
+  setTimeout(()=>{ if(wEl.style.display==='block') wEl.style.display='none'; }, 12000);
+}
+
+function resetGame() {
+  if(!confirm('รีเซ็ตเกมทั้งหมด? เหรียญและความคืบหน้าจะหายไป')) return;
+  try { localStorage.removeItem(SAVE_KEY); } catch(e){}
+  defaultState();
+  fullRender();
+  showToast('เริ่มเกมใหม่!');
+}
+
+/* ─── HELPERS ─── */
+function speedMult(){ return 1 - upgradeLevels.speed*0.15; }
+function bonusMult(){ return 1 + upgradeLevels.bonus*0.20; }
+function effectiveTime(seed,fert){ return seed.time*speedMult()*(fert?0.5:1); }
+function getWeatherData(){ return WEATHERS.find(w=>w.id===weather)||WEATHERS[0]; }
+function growTotal(p){ return effectiveTime(p.seed,p.fertilized)*(p.watered?0.8:1)*(1/getWeatherData().growMult); }
+
+function setLog(m){ logEl.textContent=m; clearTimeout(logEl._t); logEl._t=setTimeout(()=>logEl.textContent='',3000); }
+function showToast(m){ toastEl.textContent=m; toastEl.classList.add('show'); clearTimeout(toastEl._t); toastEl._t=setTimeout(()=>toastEl.classList.remove('show'),2000); }
+
+function getLevel(){ let lv=0; for(let i=0;i<LEVELS.length;i++){ if(xp>=LEVELS[i].xp) lv=i; } return lv; }
+function updateXpBar(){
+  const lv=getLevel();
+  document.getElementById('lv-num').textContent=lv+1;
+  document.getElementById('lv-name').textContent=LEVELS[lv].name;
+  const next=LEVELS[lv+1], prev=LEVELS[lv];
+  const pct=next?Math.min(100,Math.round((xp-prev.xp)/(next.xp-prev.xp)*100)):100;
+  document.getElementById('xp-bar').style.width=pct+'%';
+}
+function addXp(a){ const before=getLevel(); xp+=a; updateXpBar(); if(getLevel()>before) showToast('🎉 เลื่อนยศเป็น '+LEVELS[getLevel()].name+'!'); }
+
+/* ─── DOM refs ─── */
+const farmGrid=document.getElementById('farm-grid');
+const seedList=document.getElementById('seed-list');
+const coinVal=document.getElementById('coin-val');
+const logEl=document.getElementById('log');
+const unlockBtn=document.getElementById('unlock-btn');
+const gardenerEl=document.getElementById('gardener');
+const bubbleEl=document.getElementById('gardener-bubble');
+const toastEl=document.getElementById('toast');
+
+/* ─── DAY / NIGHT SKY ─── */
+function updateSky() {
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes();
+  document.getElementById('time-text').textContent = String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+  let sky, sun, sunEmoji, timeEmoji;
+  if(h>=5 && h<8){ sky='linear-gradient(180deg,#f6b86b 0%,#ffd9a0 40%,#cde3a8 70%,#7bb661 100%)'; sun='8%'; sunEmoji='🌅'; timeEmoji='🌅'; }
+  else if(h>=8 && h<17){ sky='linear-gradient(180deg,#6cb6e0 0%,#a8d8ef 45%,#cde3a8 70%,#7bb661 100%)'; sun='8%'; sunEmoji='☀️'; timeEmoji='🌤'; }
+  else if(h>=17 && h<19){ sky='linear-gradient(180deg,#e8825a 0%,#f6b86b 40%,#d4c97a 70%,#6a9c52 100%)'; sun='30%'; sunEmoji='🌇'; timeEmoji='🌇'; }
+  else { sky='linear-gradient(180deg,#13294b 0%,#27406b 45%,#3a5a40 75%,#2d4a30 100%)'; sun='8%'; sunEmoji='🌙'; timeEmoji='🌙'; }
+  document.body.style.background = sky;
+  const sunE=document.getElementById('sun');
+  sunE.textContent=sunEmoji; sunE.style.top=sun;
+  document.getElementById('time-emoji').textContent=timeEmoji;
+}
+
+/* ─── WEATHER ─── */
+function changeWeather() {
+  const w=WEATHERS[Math.floor(Math.random()*WEATHERS.length)];
+  weather=w.id;
+  setLog(`สภาพอากาศ: ${w.emoji} ${w.label}`);
+  weatherTimer=40000+Math.random()*40000;
+  if(weather==='rain'){ plots.forEach((p,i)=>{ if(p.state==='growing') plots[i].watered=true; }); showToast('🌧 ฝนตก! รดน้ำทุกแปลงฟรี'); renderPlots(); }
+}
+
+/* ─── TABS ─── */
+function switchTab(tab){
+  ['seeds','tools','upgrades'].forEach(t=>{ document.getElementById('panel-'+t).style.display=(t===tab)?'':'none'; });
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{ b.classList.toggle('active',['seeds','tools','upgrades'][i]===tab); });
+  if(tab==='upgrades') renderUpgrades();
+  if(tab==='tools') renderTools();
+}
+
+/* ─── RENDER ─── */
+function renderSeeds(){
+  seedList.innerHTML='';
+  SEEDS.forEach(s=>{
+    const locked=s.unlock>0&&totalEarned<s.unlock;
+    const btn=document.createElement('div');
+    btn.className='seed-btn'+(selectedSeed.id===s.id?' selected':'')+(locked?' dim':'');
+    btn.innerHTML=`<span class="s-emoji">${s.emoji}</span><span class="s-name">${s.name}</span><span class="s-price">💰${s.price}</span>`;
+    if(locked) btn.title=`ต้องรายได้รวม ${s.unlock}`;
+    btn.onclick=()=>{ if(locked){setLog(`ต้องรายได้รวม ${s.unlock} เหรียญ`);return;} selectedSeed=s; renderSeeds(); activeTool='plant'; };
+    seedList.appendChild(btn);
+  });
+}
+function renderTools(){
+  const tl=document.getElementById('tool-list'); tl.innerHTML='';
+  const tools=[
+    {id:'plant',emoji:'🌱',label:'ปลูก',cost:''},
+    {id:'water',emoji:'💧',label:'รดน้ำ',cost:'ฟรี'},
+    {id:'fert',emoji:'🧪',label:'ปุ๋ย',cost:`x${fertilizer}`},
+    {id:'harvest',emoji:'🧺',label:'เก็บหมด',cost:''},
+  ];
+  tools.forEach(t=>{
+    const btn=document.createElement('div');
+    btn.className='tool-btn'+(activeTool===t.id?' active-tool':'');
+    btn.innerHTML=`<span class="t-emoji">${t.emoji}</span>${t.label}<div class="t-cost">${t.cost}</div>`;
+    btn.onclick=()=>{ if(t.id==='harvest'){harvestAll();return;} activeTool=t.id; renderTools(); };
+    tl.appendChild(btn);
+  });
+}
+function renderUpgrades(){
+  const ul=document.getElementById('upgrade-list'); ul.innerHTML='';
+  UPGRADES.forEach(u=>{
+    const lv=upgradeLevels[u.id]||0, maxed=lv>=u.maxLv, cost=Math.round(u.baseCost*Math.pow(1.8,lv));
+    const btn=document.createElement('div');
+    btn.className='upg-btn'+(maxed?' maxed':'');
+    btn.innerHTML=`<div class="u-title">${u.title} ${lv>0?'['+lv+'/'+u.maxLv+']':''}</div><div class="u-desc">${u.desc}</div><div class="u-cost">${maxed?'MAX ✓':'💰 '+cost+' เหรียญ'}</div>`;
+    if(!maxed) btn.onclick=()=>buyUpgrade(u,cost);
+    ul.appendChild(btn);
+  });
+}
+function buyUpgrade(u,cost){ if(coins<cost){setLog('เหรียญไม่พอ!');return;} coins-=cost; updateCoins(); upgradeLevels[u.id]++; showToast(`⬆️ ${u.title} อัพแล้ว!`); renderUpgrades(); }
+
+function renderPlots(){
+  farmGrid.innerHTML='';
+  let active=0;
+  plots.forEach((p,i)=>{
+    const div=document.createElement('div');
+    let cls='plot';
+    if(p.locked) cls+=' locked';
+    if(p.state==='ready') cls+=' ready';
+    if(p.watered&&p.state==='growing') cls+=' watered';
+    if(p.wilted) cls+=' wilted';
+    div.className=cls;
+    if(p.locked){
+      const cost=Math.round(UNLOCK_COSTS[i]*(upgradeLevels.plots>0?0.7:1));
+      div.innerHTML=`<span class="emoji">🔒</span><span class="label">${cost}🪙</span>`;
+    } else if(p.state==='empty'){
+      div.innerHTML=`<span class="emoji">🟫</span><span class="label">ว่าง</span>`;
+      div.onclick=()=>handlePlotClick(i);
+    } else if(p.state==='growing'){
+      const pct=Math.min(100,Math.round((Date.now()-p.plantedAt)/growTotal(p)*100));
+      div.innerHTML=`<span class="emoji">${p.wilted?'🥀':pct<50?'🌱':'🌿'}</span><span class="label">${pct}%</span><div class="prog-bar" style="width:${pct}%"></div>`;
+      if(p.fertilized) div.innerHTML+=`<span class="fert-badge">⚡</span>`;
+      if(p.watered) div.innerHTML+=`<span style="position:absolute;top:3px;left:3px;font-size:11px;">💧</span>`;
+      div.onclick=()=>handlePlotClick(i); active++;
+    } else if(p.state==='ready'){
+      div.innerHTML=`<span class="emoji">${p.seed.emoji}</span><span class="label">${p.golden?'✨ทองคำ!':'เก็บ!'}</span>`;
+      if(p.golden){ div.innerHTML+=`<span class="fert-badge">✨</span>`; div.style.borderColor='#f5c542'; }
+      div.onclick=()=>handlePlotClick(i); active++;
+    }
+    farmGrid.appendChild(div);
+  });
+  document.getElementById('active-plots').textContent=active+'/'+plots.filter(p=>!p.locked).length;
+  updateUnlockBtn();
+}
+
+function handlePlotClick(i){
+  const p=plots[i];
+  if(p.locked){ setLog('ปลดล็อกก่อนนะ!'); return; }
+  if(activeTool==='plant'){
+    if(p.state==='empty') plantPlot(i);
+    else if(p.state==='ready') harvest(i);
+    else if(p.state==='growing') checkHarvest(i);
+  } else if(activeTool==='water'){
+    if(p.state==='growing'&&!p.watered){ plots[i].watered=true; renderPlots(); setLog('💧 รดน้ำแล้ว เร็วขึ้น 20%'); moveGardener(i,'💧 รดน้ำ~'); }
+    else setLog('ไม่จำเป็นต้องรด');
+  } else if(activeTool==='fert'){
+    if(fertilizer<=0){ setLog('ไม่มีปุ๋ย! ได้จากเก็บเกี่ยว'); return; }
+    if(p.state==='growing'&&!p.fertilized){ fertilizer--; plots[i].fertilized=true; updateFert(); renderPlots(); renderTools(); setLog('🧪 ใส่ปุ๋ย! เร็วขึ้น 2x'); moveGardener(i,'🧪 ปุ๋ย!'); }
+    else setLog('ใส่ปุ๋ยไม่ได้ตอนนี้');
+  }
+}
+
+function plantPlot(i,auto){
+  if(coins<selectedSeed.price){ if(!auto) setLog(`ต้องการ ${selectedSeed.price} เหรียญ`); return false; }
+  coins-=selectedSeed.price;
+  const golden = Math.random() < (0.04 + luckBonus);
+  plots[i]={state:'growing',seed:selectedSeed,plantedAt:Date.now(),locked:false,watered:false,wilted:false,fertilized:false,golden,i};
+  updateCoins();
+  if(!auto){ renderPlots(); setLog(`ปลูก${selectedSeed.emoji} ${selectedSeed.name}`); moveGardener(i,`ปลูก${selectedSeed.name}~`); }
+  if(golden) showToast('✨ เมล็ดทองคำ! มูลค่า x5');
+  return true;
+}
+function checkHarvest(i){
+  const p=plots[i], total=growTotal(p), el=Date.now()-p.plantedAt;
+  if(el>=total){ plots[i].state='ready'; renderPlots(); } else setLog(`อีก ${Math.ceil((total-el)/1000)} วินาที`);
+}
+function harvest(i,auto){
+  const p=plots[i];
+  let reward=Math.round(p.seed.reward*bonusMult()*(weather==='rain'?1.15:1));
+  if(p.golden) reward*=5;
+  coins+=reward; totalHarvested++; totalEarned+=reward;
+  if(Math.random()<0.3) fertilizer++;
+  addXp(p.seed.xp);
+  plots[i]={state:'empty',seed:null,plantedAt:0,locked:false,watered:false,wilted:false,fertilized:false,golden:false,i};
+  updateCoins(); renderPlots(); renderSeeds();
+  document.getElementById('total-harvested').textContent=totalHarvested;
+  document.getElementById('total-earned').textContent=totalEarned;
+  updateFert();
+  showToast(`${p.golden?'✨':''}+${reward} 💰`);
+  if(!auto) moveGardener(i,`เก็บ${p.seed.emoji}!`);
+  checkAchievements();
+}
+function harvestAll(){
+  let c=0; plots.forEach((_,i)=>{ if(plots[i].state==='ready'){ harvest(i); c++; } });
+  if(c===0) setLog('ยังไม่มีอะไรให้เก็บ'); else showToast(`🧺 เก็บ ${c} แปลง!`);
+}
+function updateCoins(){ coinVal.textContent=coins; }
+function updateFert(){ document.getElementById('fert-count').textContent=fertilizer; }
+
+function updateUnlockBtn(){
+  const next=plots.find(p=>p.locked);
+  if(!next){ unlockBtn.style.display='none'; return; }
+  const cost=Math.round(UNLOCK_COSTS[next.i]*(upgradeLevels.plots>0?0.7:1));
+  unlockBtn.style.display='block';
+  unlockBtn.textContent=`🔓 ปลดล็อกแปลงที่ ${next.i+1} — ${cost} เหรียญ`;
+  unlockBtn.onclick=()=>{ if(coins<cost){setLog('เหรียญไม่พอ!');return;} coins-=cost; next.locked=false; updateCoins(); renderPlots(); setLog(`ปลดล็อกแปลงที่ ${next.i+1} แล้ว!`); };
+}
+
+/* ─── GARDENER ─── */
+function moveGardener(plotIdx,msg){
+  const farmRect=document.getElementById('farm-wrap').getBoundingClientRect();
+  const el=farmGrid.querySelectorAll('.plot')[plotIdx];
+  if(!el) return;
+  const r=el.getBoundingClientRect();
+  const x=r.left-farmRect.left+r.width/2-18;
+  const y=r.top-farmRect.top-38;
+  gardenerEl.style.left=x+'px'; gardenerEl.style.top=y+'px';
+  bubbleEl.style.left=(x-10)+'px'; bubbleEl.style.top=(y-26)+'px';
+  bubbleEl.textContent=msg; bubbleEl.style.display='block';
+  clearTimeout(bubbleEl._t); bubbleEl._t=setTimeout(()=>bubbleEl.style.display='none',2000);
+}
+function randomGardenerMove(){
+  const av=plots.filter(p=>!p.locked); if(!av.length) return;
+  const p=av[Math.floor(Math.random()*av.length)];
+  const msgs=['🌻 ดูแลอยู่~','สวัสดี!','🌿 งดงาม','☀️ แดดดี','วันดีจัง','🎵 ลั้นลา'];
+  moveGardener(p.i,msgs[Math.floor(Math.random()*msgs.length)]);
+}
+
+/* ─── TICK ─── */
+let lastTick=Date.now();
+function tick(){
+  const now=Date.now(), dt=now-lastTick; lastTick=now;
+  weatherTimer-=dt; if(weatherTimer<=0) changeWeather();
+  maybeShootingStar(dt);
+  checkAchievements();
+
+  catTimer+=dt;
+  if(catTimer>20000 && !catWalking){ catTimer=0; if(Math.random()<0.4) catWalk(); }
+
+  ufoTimer+=dt;
+  if(ufoTimer>30000 && !ufoActive){ ufoTimer=0; if(Math.random()<0.25) ufoVisit(); }
+
+  if(upgradeLevels.autofert>0){
+    autoFertTimer+=dt;
+    if(autoFertTimer>=30000/upgradeLevels.autofert){ autoFertTimer=0;
+      let w=false; plots.forEach((p,i)=>{ if(p.state==='growing'&&!p.watered){ plots[i].watered=true; w=true; } });
+      if(w){ setLog('🤖 คนสวนออโต้รดน้ำแล้ว!'); renderPlots(); }
+    }
+  }
+  if(weather==='storm'){ let ch=false; plots.forEach((p,i)=>{ if(p.state==='growing'&&!p.watered&&Math.random()<0.004){ plots[i].wilted=true; ch=true; } }); if(ch) renderPlots(); }
+
+  // AUTO harvest & plant (the gardener works on its own)
+  autoActTimer+=dt;
+  if(autoActTimer>=1500){
+    autoActTimer=0;
+    if(upgradeLevels.autoharvest>0){
+      const ready=plots.find(p=>p.state==='ready');
+      if(ready){ moveGardener(ready.i,'🧺 เก็บเอง~'); harvest(ready.i,true); }
+    }
+    if(upgradeLevels.autoplant>0){
+      const empty=plots.find(p=>!p.locked&&p.state==='empty');
+      if(empty && coins>=selectedSeed.price){ if(plantPlot(empty.i,true)){ moveGardener(empty.i,'🌾 ปลูกเอง~'); renderPlots(); } }
+    }
+  }
+
+  gardenerMoveTimer+=dt;
+  if(gardenerMoveTimer>7000){ gardenerMoveTimer=0; randomGardenerMove(); }
+
+  let needs=false;
+  plots.forEach((p,i)=>{ if(p.state==='growing'&&now-p.plantedAt>=growTotal(p)){ plots[i].state='ready'; needs=true; } });
+  if(needs){ renderPlots(); return; }
+
+  const els=farmGrid.querySelectorAll('.plot');
+  plots.forEach((p,i)=>{
+    if(p.state==='growing'){
+      const pct=Math.min(100,Math.round((now-p.plantedAt)/growTotal(p)*100));
+      const el=els[i]; if(!el) return;
+      const bar=el.querySelector('.prog-bar'), lbl=el.querySelector('.label'), ico=el.querySelector('.emoji');
+      if(bar) bar.style.width=pct+'%';
+      if(lbl) lbl.textContent=pct+'%';
+      if(ico&&!p.wilted) ico.textContent=pct<50?'🌱':'🌿';
+    }
+  });
+}
+
+/* ─── ACHIEVEMENTS ─── */
+const ACHIEVEMENTS = [
+  { id:'first',   need:()=>totalHarvested>=1,    msg:'🏅 เก็บเกี่ยวครั้งแรก!' },
+  { id:'h50',     need:()=>totalHarvested>=50,   msg:'🏅 เก็บครบ 50 แปลง!' },
+  { id:'h500',    need:()=>totalHarvested>=500,  msg:'🏆 เก็บครบ 500 แปลง! สุดยอด!' },
+  { id:'rich',    need:()=>coins>=1000,          msg:'🏅 เศรษฐีฟาร์ม 1,000 เหรียญ!' },
+  { id:'tycoon',  need:()=>totalEarned>=10000,   msg:'🏆 ราชาผัก! รายได้รวม 10,000!' },
+  { id:'allplots',need:()=>plots.every(p=>!p.locked), msg:'🏅 ปลดล็อกครบทุกแปลง!' },
+];
+function checkAchievements(){
+  ACHIEVEMENTS.forEach(a=>{ if(!achievements[a.id]&&a.need()){ achievements[a.id]=true; showToast(a.msg); } });
+}
+
+/* ─── EASTER EGGS ─── */
+function eggGoldenRain(){
+  luckBonus = 0.4;
+  coins += 500; updateCoins();
+  showToast('🌈✨ โกงโค้ดสำเร็จ! +500 เหรียญ & โอกาสทองคำพุ่ง!');
+  // shower of coins
+  for(let k=0;k<24;k++) spawnFalling(['💰','✨','🪙','🌟'][k%4]);
+  setTimeout(()=>{ luckBonus = 0; showToast('✨ พลังทองคำหมดแล้ว'); }, 60000);
+}
+function spawnFalling(ch){
+  const e=document.createElement('div');
+  e.textContent=ch;
+  e.style.cssText=`position:fixed;top:-40px;left:${Math.round(Math.random()*90)}vw;font-size:${20+Math.round(Math.random()*20)}px;z-index:90;pointer-events:none;transition:top 2.5s linear,opacity 2.5s;`;
+  document.body.appendChild(e);
+  requestAnimationFrame(()=>{ e.style.top='100vh'; e.style.opacity='0'; });
+  setTimeout(()=>e.remove(),2600);
+}
+function eggSun(){
+  sunClicks++;
+  if(sunClicks===7){
+    sunClicks=0;
+    weather='sunny'; weatherTimer=60000;
+    fertilizer+=5; updateFert();
+    showToast('☀️ บูชาพระอาทิตย์! +5 ปุ๋ย & แดดดี 1 นาที');
+    for(let k=0;k<10;k++) spawnFalling('🧪');
+  }
+}
+function eggGardener(){
+  gardenerClicks++;
+  const lines=['อย่าจิ้มสิ! 😅','จั๊กจี้น่ะ!','ทำงานอยู่นะ~','555','รักผักที่สุด ❤️'];
+  moveGardener(plots.find(p=>!p.locked).i, lines[Math.min(gardenerClicks,lines.length)-1]||lines[0]);
+  if(gardenerClicks===10){
+    gardenerClicks=0;
+    coins+=200; updateCoins();
+    showToast('🎁 คนสวนให้ของขวัญ! +200 เหรียญ');
+  }
+}
+let shootStarTimer=0;
+function maybeShootingStar(dt){
+  const h=new Date().getHours();
+  if(h>=19||h<5){
+    shootStarTimer+=dt;
+    if(shootStarTimer>25000 && Math.random()<0.3){
+      shootStarTimer=0;
+      const s=document.createElement('div');
+      s.textContent='🌠'; s.title='ขอพร!';
+      s.style.cssText='position:fixed;top:12%;left:-40px;font-size:30px;z-index:5;cursor:pointer;transition:left 3s linear,top 3s linear;';
+      document.body.appendChild(s);
+      requestAnimationFrame(()=>{ s.style.left='100vw'; s.style.top='30%'; });
+      s.onclick=()=>{ coins+=100; updateCoins(); showToast('🌠 ขอพรสำเร็จ! +100 เหรียญ'); s.remove(); };
+      setTimeout(()=>s.remove(),3000);
+    }
+  }
+}
+
+/* ─── WANDERING CAT 🐈 ─── */
+const catEl=document.getElementById('cat');
+let catTimer=0, catWalking=false;
+function catWalk(){
+  if(catWalking) return;
+  catWalking=true;
+  catEl.textContent=Math.random()<0.5?'🐈':'🐈‍⬛';
+  catEl.style.left='-60px';
+  const dir=Math.random()<0.5;
+  catEl.style.transform=dir?'scaleX(-1)':'scaleX(1)';
+  requestAnimationFrame(()=>{ catEl.style.left=dir?'105vw':'105vw'; });
+  setTimeout(()=>{ catWalking=false; catEl.style.left='-60px'; },8200);
+}
+catEl.onclick=()=>{
+  if(!catWalking) return;
+  fertilizer+=2; updateFert();
+  showToast('🐈 เมี้ยว~ แมวให้ปุ๋ย +2!');
+  catEl.textContent='😺';
+  for(let k=0;k<4;k++) spawnFalling('💚');
+};
+
+/* ─── UFO 🛸 (alien crop buyer) ─── */
+const ufoEl=document.getElementById('ufo'), beamEl=document.getElementById('ufo-beam');
+let ufoTimer=0, ufoActive=false;
+function ufoVisit(){
+  if(ufoActive) return;
+  const target=plots.find(p=>p.state==='ready'||p.state==='growing');
+  if(!target) return;
+  ufoActive=true;
+  // fly to above the target plot
+  const el=farmGrid.querySelectorAll('.plot')[target.i];
+  const r=el.getBoundingClientRect();
+  const tx=r.left+r.width/2-23;
+  ufoEl.style.transition='left 2.5s ease';
+  ufoEl.style.left=tx+'px';
+  let scared=false;
+  ufoEl.onclick=()=>{
+    if(scared) return;
+    scared=true;
+    coins+=150; updateCoins();
+    showToast('🛸 ไล่เอเลี่ยนสำเร็จ! +150 เหรียญรางวัล');
+    endUfo();
+  };
+  setTimeout(()=>{
+    if(scared) return;
+    // beam down
+    beamEl.style.left=tx+8+'px';
+    beamEl.style.top=(ufoEl.getBoundingClientRect().bottom)+'px';
+    beamEl.style.height=(r.top-ufoEl.getBoundingClientRect().bottom)+'px';
+    setTimeout(()=>{
+      if(scared) return;
+      // abduct & pay 3x (alien overpays!)
+      const seed=target.seed;
+      const pay=Math.round(seed.reward*3*(target.golden?5:1));
+      coins+=pay; updateCoins();
+      plots[target.i]={state:'empty',seed:null,plantedAt:0,locked:false,watered:false,wilted:false,fertilized:false,golden:false,i:target.i};
+      renderPlots();
+      showToast(`🛸 เอเลี่ยนซื้อ${seed.emoji}ไป! +${pay} เหรียญ`);
+      endUfo();
+    },800);
+  },2700);
+}
+function endUfo(){
+  beamEl.style.height='0';
+  ufoEl.style.transition='left 2.5s linear';
+  ufoEl.style.left='110vw';
+  setTimeout(()=>{ ufoEl.style.left='-80px'; ufoActive=false; },2600);
+}
+
+document.addEventListener('keydown',e=>{
+  konami.push(e.key);
+  if(konami.length>KONAMI.length) konami.shift();
+  if(konami.join(',')===KONAMI.join(',')){ konami=[]; eggGoldenRain(); }
+});
+document.getElementById('sun').style.cursor='pointer';
+document.getElementById('sun').onclick=eggSun;
+gardenerEl.style.pointerEvents='auto';
+gardenerEl.style.cursor='pointer';
+gardenerEl.onclick=eggGardener;
+
+/* ─── INIT ─── */
+function fullRender(){ renderSeeds(); renderPlots(); renderTools(); updateCoins(); updateFert(); updateXpBar(); }
+
+loadGame();
+updateSky();
+fullRender();
+setTimeout(randomGardenerMove,1500);
+setInterval(tick,500);
+setInterval(updateSky,30000);
+setInterval(saveGame,5000);
+window.addEventListener('beforeunload',saveGame);
+</script>
+</body>
+</html>
