@@ -142,11 +142,16 @@ function init(){
   renderWeather();
   weatherEl.textContent = WEATHERS[weather].em+' '+WEATHERS[weather].nm;
 
-  // loops
-  let last = performance.now();
+  // loops — เดินเกม ~10 ครั้ง/วินาที (พอลื่นสำหรับ wallpaper, ประหยัด CPU/GPU กว่าวิ่งเต็ม 60fps มาก)
+  let last = performance.now(), acc = 0;
+  const STEP = 0.1;                         // อัปเดตภาพทุก 100ms
   function loop(now){
-    const dt = Math.min(0.25, (now-last)/1000); last = now;
-    tick(dt);
+    if(!document.hidden){                   // หน้าต่างถูกบัง = หยุดวาด (ผักโตตามเวลาจริงอยู่แล้ว)
+      const dt = Math.min(0.25, (now-last)/1000);
+      acc += dt;
+      if(acc >= STEP){ tick(acc); acc = 0; }
+    }
+    last = now;
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
@@ -324,13 +329,19 @@ function renderPlot(i){
   const p = S.plots[i];
   const cs = el.querySelector('.crop'), bar = el.querySelector('.progbar i');
   if(!cs) return;
-  if(!p){ cs.textContent=''; bar.style.width='0%'; el.classList.remove('ready','golden'); return; }
+  if(!p){
+    if(el._st!=='empty'){ cs.textContent=''; bar.style.width='0%'; el.classList.remove('ready','golden'); el._st='empty'; el._pct=-1; }
+    return;
+  }
   const c = crop(p.crop);
   const realGrow = c.grow/growMult(c.id);
   const prog = Math.min(1,(Date.now()-p.plantedAt)/1000/realGrow);
+  const pct = Math.round(prog*100);
+  if(el._st==='grow' && el._pct===pct) return;   // ภาพไม่เปลี่ยน → ไม่ต้องแตะ DOM
+  el._st='grow'; el._pct=pct;
   cs.textContent = prog<0.33?'🌱':prog<0.7?'🌿':c.em;
-  cs.style.transform = `scale(${0.6+prog*0.4})`;
-  bar.style.width = (prog*100)+'%';
+  cs.style.transform = `scale(${(0.6+prog*0.4).toFixed(2)})`;
+  bar.style.width = pct+'%';
   el.classList.toggle('ready', prog>=1);
   el.classList.toggle('golden', prog>=1 && p.golden);
 }
@@ -354,6 +365,7 @@ function walkTo(xPct, yPct, done){
 
 // ลูปหลัก: หาเป้าหมาย → เดินไปถึงแปลงจริง (ทุกแถว) → ค่อยทำงาน → วนใหม่
 function gardenerLoop(){
+  if(document.hidden){ setTimeout(gardenerLoop, 1500); return; } // ถูกบังอยู่ — ไม่ต้องคำนวณ layout
   let ready=-1, empty=-1;
   for(let i=0;i<S.plotCount;i++){
     if(ready<0 && isReady(S.plots[i])) ready=i;
@@ -456,39 +468,48 @@ const GLOW = {               // สีแสงเรือง + ความส
   evening:['rgba(255,150,90,.85)',0.85],
   night:  ['rgba(190,210,255,.7)',0.45],
 };
-let glowEl, ambientEl;
+let glowEl, ambientEl, _lastPhase=null, _lastLx=null, _lastLy=null;
+const PHASE_LABELS={morning:'🌅 เช้า',day:'🌞 กลางวัน',evening:'🌇 เย็น',night:'🌙 กลางคืน'};
 function updateScene(){
   const ph = dayPhase();
-  const c = SKY[ph]||SKY.day;
-  sceneEl.style.background = `linear-gradient(${c[0]} 0%, ${c[1]} 38%, ${c[2]} 70%, ${c[3]} 100%)`;
-  if(ambientEl) ambientEl.style.background = AMBIENT[ph];
 
-  const t = gameClock/DAY_LEN;
-  const isNight = (ph==='night');
-  const lx = 8 + t*84;                          // ลอยข้ามฟ้าซ้าย→ขวา
-  const ly = 70 - Math.sin(t*Math.PI)*58;       // โค้งขึ้น-ลงตามเวลา
-  celestialEl.textContent = isNight?'🌙':'☀️';
-  celestialEl.style.left = lx+'%';
-  celestialEl.style.top  = ly+'%';
-
-  if(glowEl){
-    const g = GLOW[ph]||GLOW.day;
-    glowEl.style.left = (lx+1.6)+'%';
-    glowEl.style.top  = (ly+2)+'%';
-    glowEl.style.opacity = g[1];
-    glowEl.style.background =
-      `radial-gradient(circle, ${g[0]} 0%, ${g[0].replace(/[\d.]+\)$/,'.3)')} 30%, transparent 64%)`;
+  // ── สิ่งที่เปลี่ยนตาม "ช่วงเวลา" เท่านั้น → เขียนเฉพาะตอนเปลี่ยนช่วง (เลี่ยง repaint ทั้งจอทุกเฟรม) ──
+  if(ph!==_lastPhase){
+    const c = SKY[ph]||SKY.day;
+    sceneEl.style.background = `linear-gradient(${c[0]} 0%, ${c[1]} 38%, ${c[2]} 70%, ${c[3]} 100%)`;
+    if(ambientEl) ambientEl.style.background = AMBIENT[ph];
+    celestialEl.textContent = ph==='night'?'🌙':'☀️';
+    starsEl.style.opacity = ph==='night'?1:(ph==='evening'?0.35:0);
+    starsEl.classList.toggle('off', ph!=='night' && ph!=='evening'); // หยุด animation ดาวตอนกลางวัน
+    timeEl.textContent = PHASE_LABELS[ph];
+    if(glowEl){
+      const g = GLOW[ph]||GLOW.day;
+      glowEl.style.opacity = g[1];
+      glowEl.style.background =
+        `radial-gradient(circle, ${g[0]} 0%, ${g[0].replace(/[\d.]+\)$/,'.3)')} 30%, transparent 64%)`;
+    }
+    _lastPhase = ph;
   }
 
-  starsEl.style.opacity = ph==='night'?1:(ph==='evening'?0.35:0);
-  const labels={morning:'🌅 เช้า',day:'🌞 กลางวัน',evening:'🌇 เย็น',night:'🌙 กลางคืน'};
-  timeEl.textContent = labels[ph];
+  // ── ตำแหน่งดวงอาทิตย์/จันทร์ — เขียนเฉพาะตอนขยับพอเห็น (~0.1%) เลี่ยงการเขียนทุก tick ──
+  const t = gameClock/DAY_LEN;
+  const lx = (8 + t*84).toFixed(1);             // ลอยข้ามฟ้าซ้าย→ขวา
+  const ly = (70 - Math.sin(t*Math.PI)*58).toFixed(1);  // โค้งขึ้น-ลงตามเวลา
+  if(lx!==_lastLx || ly!==_lastLy){
+    _lastLx=lx; _lastLy=ly;
+    celestialEl.style.left = lx+'%';
+    celestialEl.style.top  = ly+'%';
+    if(glowEl){
+      glowEl.style.left = (+lx+1.6)+'%';
+      glowEl.style.top  = (+ly+2)+'%';
+    }
+  }
 }
 
 function buildStars(){
   glowEl = $('#sunGlow'); ambientEl = $('#ambient');
   let h='';
-  for(let i=0;i<110;i++){
+  for(let i=0;i<70;i++){
     const sz = 1+Math.random()*2;
     h+=`<div class="star" style="left:${Math.random()*100}%;top:${Math.random()*55}%;
         width:${sz}px;height:${sz}px;animation-delay:${Math.random()*3}s"></div>`;
@@ -508,7 +529,7 @@ function buildStars(){
 function renderWeather(){
   const L=$('#weatherLayer'); L.innerHTML='';
   if(weather==='rain'||weather==='storm'){
-    const n = weather==='storm'?90:55;
+    const n = weather==='storm'?50:35;
     let h='';
     for(let i=0;i<n;i++){
       h+=`<div class="rain" style="left:${Math.random()*100}%;animation-duration:${0.4+Math.random()*0.5}s;animation-delay:${Math.random()*1}s"></div>`;

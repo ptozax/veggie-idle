@@ -6,8 +6,8 @@
 <title>🌱 ฟาร์มไม่มีวันหยุด — Idle Farm Wallpaper</title>
 <style>
   :root{
-    --panel: rgba(20,28,22,.72);
-    --panel2: rgba(28,38,30,.85);
+    --panel: rgba(20,28,22,.86);
+    --panel2: rgba(28,38,30,.92);
     --line: rgba(255,255,255,.12);
     --gold:#ffd34d;
     --green:#7ed957;
@@ -35,6 +35,7 @@
     opacity:0;animation:tw 3s infinite ease-in-out;box-shadow:0 0 4px #fff;}
   @keyframes tw{0%,100%{opacity:.15}50%{opacity:.95}}
   #stars{position:absolute;inset:0;opacity:0;transition:opacity 3s;z-index:1;}
+  #stars.off .star{animation-play-state:paused;}  /* หยุด animation ดาวตอนกลางวัน (ประหยัด GPU) */
 
   /* เนินเขาซ้อนชั้น (parallax) */
   #hills{position:absolute;left:0;right:0;bottom:28%;height:40%;z-index:1;}
@@ -109,14 +110,14 @@
     padding:10px 12px;align-items:center;flex-wrap:wrap;
     background:linear-gradient(rgba(0,0,0,.45),transparent);}
   .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;
-    padding:6px 12px;font-size:15px;font-weight:600;backdrop-filter:blur(6px);white-space:nowrap;}
+    padding:6px 12px;font-size:15px;font-weight:600;white-space:nowrap;}
   .stat b{color:var(--gold);}
   .stat.spirit b{color:#b388ff;}
   #weatherStat{font-size:18px;}
   #spacer{flex:1;}
   .btn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
     border-radius:10px;padding:7px 13px;font-size:14px;font-weight:600;cursor:pointer;
-    backdrop-filter:blur(6px);transition:.12s;}
+    transition:.12s;}
   .btn:hover{border-color:var(--green);transform:translateY(-1px);}
   .btn.on{background:var(--green);color:#10221a;border-color:var(--green);}
   .btn.prestige{background:linear-gradient(135deg,#7c4dff,#b388ff);color:#fff;border:none;}
@@ -127,8 +128,7 @@
     padding:10px 12px;justify-content:center;flex-wrap:wrap;
     background:linear-gradient(transparent,rgba(0,0,0,.5));}
   .seed{background:var(--panel);border:2px solid var(--line);border-radius:12px;
-    padding:6px 10px;min-width:78px;text-align:center;cursor:pointer;backdrop-filter:blur(6px);
-    transition:.12s;position:relative;}
+    padding:6px 10px;min-width:78px;text-align:center;cursor:pointer;    transition:.12s;position:relative;}
   .seed:hover{transform:translateY(-3px);}
   .seed.sel{border-color:var(--gold);background:var(--panel2);}
   .seed.lock{opacity:.45;filter:grayscale(.6);cursor:not-allowed;}
@@ -141,7 +141,7 @@
 
   /* panels (modals) */
   .modal{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.55);
-    display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
+    display:none;align-items:center;justify-content:center;}
   .modal.show{display:flex;}
   .card{background:#16221b;border:1px solid var(--line);border-radius:16px;
     width:min(560px,92vw);max-height:86vh;overflow:auto;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
@@ -160,7 +160,7 @@
   /* toasts */
   #toasts{position:fixed;top:60px;right:14px;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
   .toast{background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--green);
-    padding:9px 14px;border-radius:9px;font-size:14px;animation:tin .3s, tout .4s 2.6s forwards;backdrop-filter:blur(6px);}
+    padding:9px 14px;border-radius:9px;font-size:14px;animation:tin .3s, tout .4s 2.6s forwards;}
   @keyframes tin{from{transform:translateX(60px);opacity:0}}
   @keyframes tout{to{transform:translateX(60px);opacity:0}}
 
