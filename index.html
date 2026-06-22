@@ -109,14 +109,14 @@
 
   /* ===== HUD ===== */
   #topbar{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;gap:8px;
-    padding:10px 12px;align-items:center;flex-wrap:wrap;
+    padding:10px 12px;align-items:center;flex-wrap:wrap;justify-content:flex-end;
     background:linear-gradient(rgba(0,0,0,.45),transparent);}
   .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;
     padding:6px 12px;font-size:15px;font-weight:600;white-space:nowrap;}
   .stat b{color:var(--gold);}
   .stat.spirit b{color:#b388ff;}
   #weatherStat{font-size:18px;}
-  #spacer{flex:1;}
+  #spacer{display:none;}  /* ไม่ดันแยกซ้าย-ขวาแล้ว เพราะ topbar ชิดขวาทั้งแถบ */
   .btn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
     border-radius:10px;padding:7px 13px;font-size:14px;font-weight:600;cursor:pointer;
     transition:.12s;}
@@ -125,9 +125,10 @@
   .btn.prestige{background:linear-gradient(135deg,#7c4dff,#b388ff);color:#fff;border:none;}
   .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
 
-  /* crop selector */
-  #seedbar{position:fixed;bottom:0;left:0;right:0;z-index:20;display:flex;gap:8px;
-    padding:10px 12px;justify-content:center;flex-wrap:wrap;
+  /* crop selector — กว้างตามเนื้อหา ปรับตำแหน่ง/ขนาดได้จาก JS (applyLayout) */
+  #seedbar{position:fixed;bottom:0;z-index:20;display:flex;gap:8px;
+    padding:10px 12px;flex-wrap:wrap;max-width:96vw;
+    transform-origin:bottom center;border-radius:14px 14px 0 0;
     background:linear-gradient(transparent,rgba(0,0,0,.5));}
   .seed{background:var(--panel);border:2px solid var(--line);border-radius:12px;
     padding:6px 10px;min-width:78px;text-align:center;cursor:pointer;    transition:.12s;position:relative;}
@@ -141,12 +142,23 @@
   .seed .markup{position:absolute;top:3px;left:5px;font-size:10px;font-weight:700;}
   .up{color:#7ed957}.down{color:#ff7a7a}
 
-  /* panels (modals) */
-  .modal{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.55);
-    display:none;align-items:center;justify-content:center;}
-  .modal.show{display:flex;}
-  .card{background:#16221b;border:1px solid var(--line);border-radius:16px;
-    width:min(560px,92vw);max-height:86vh;overflow:auto;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+  /* panels = dropdown ห้อยจากมุมขวาบน (ไม่ค้างกลางจอ/รอยต่อ 2 จอ) */
+  .modal{position:fixed;inset:0;z-index:40;background:transparent;display:none;}
+  .modal.show{display:block;}
+  .card{position:absolute;top:54px;right:12px;
+    background:#16221b;border:1px solid var(--line);border-radius:16px;
+    width:min(440px,94vw);max-height:84vh;overflow:auto;padding:20px;box-shadow:0 18px 50px rgba(0,0,0,.6);}
+  /* welcome popup ยังอยู่กลางจอแบบเดิม + ฉากหลังหรี่ */
+  #welcomeModal{background:rgba(0,0,0,.5);}
+  #welcomeModal.show{display:flex;align-items:center;justify-content:center;}
+  #welcomeModal .card{position:static;width:min(440px,90vw);}
+  /* เมนูยุบ (☰) — รวมปุ่มที่ไม่ได้กดบ่อยไว้ในนี้ */
+  #menuWrap{position:relative;}
+  #menuDrop{position:absolute;top:calc(100% + 6px);right:0;display:none;flex-direction:column;gap:6px;
+    background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px;min-width:178px;
+    box-shadow:0 14px 34px rgba(0,0,0,.55);z-index:30;}
+  #menuDrop.open{display:flex;}
+  #menuDrop .btn{width:100%;text-align:left;}
   .card h2{margin:0 0 4px;font-size:22px;}
   .card .sub{color:var(--muted);font-size:13px;margin-bottom:14px;}
   .row{display:flex;justify-content:space-between;align-items:center;gap:10px;
@@ -206,11 +218,16 @@
     <div class="stat" id="timeStat">🌅 เช้า</div>
     <div id="spacer"></div>
     <button class="btn" id="autoBtn">🤖 ปลูกอัตโนมัติ: เปิด</button>
-    <button class="btn" id="shopBtn">⬆️ อัปเกรด</button>
-    <button class="btn" id="masteryBtn">🌟 ผัก</button>
-    <button class="btn" id="questBtn">📜 เควส</button>
-    <button class="btn prestige" id="prestigeBtn">🔄 รีเบิร์ธ</button>
-    <button class="btn" id="settingBtn">⚙️</button>
+    <div id="menuWrap">
+      <button class="btn" id="menuBtn">☰ เมนู</button>
+      <div id="menuDrop">
+        <button class="btn" id="shopBtn">⬆️ อัปเกรด</button>
+        <button class="btn" id="masteryBtn">🌟 ความเชี่ยวชาญผัก</button>
+        <button class="btn" id="questBtn">📜 เควส</button>
+        <button class="btn prestige" id="prestigeBtn">🔄 รีเบิร์ธ</button>
+        <button class="btn" id="settingBtn">⚙️ ตั้งค่า</button>
+      </div>
+    </div>
   </div>
 
   <div id="seedbar"></div>
@@ -272,6 +289,24 @@
 
     <div class="row"><div class="l"><b>⛰️ ความสูงพื้นดิน</b><small>ปรับระดับเส้นขอบฟ้า/พื้นดิน</small></div>
       <input type="range" id="groundRange" min="15" max="55" step="1" style="width:160px;">
+    </div>
+
+    <div class="row"><div class="l"><b>🌱 ตำแหน่งแถบผัก</b><small>ย้ายแถบเลือกผัก ซ้าย/กลาง/ขวา</small></div>
+      <div id="seedPosBtns" style="display:flex;gap:6px;">
+        <button class="btn" data-seedpos="left">⬅️ ซ้าย</button>
+        <button class="btn" data-seedpos="center">⬛ กลาง</button>
+        <button class="btn" data-seedpos="right">➡️ ขวา</button>
+      </div></div>
+
+    <div class="row"><div class="l"><b>🔍 ขนาดแถบผัก</b><small>ย่อ/ขยายแถบเลือกผัก</small></div>
+      <div id="seedScaleBtns" style="display:flex;gap:6px;">
+        <button class="btn" data-seedscale="0.75">เล็ก</button>
+        <button class="btn" data-seedscale="1">ปกติ</button>
+        <button class="btn" data-seedscale="1.3">ใหญ่</button>
+      </div></div>
+
+    <div class="row"><div class="l"><b>↕️ ความสูงแถบผัก</b><small>ดันแถบผักขึ้น/ลง</small></div>
+      <input type="range" id="seedBottomRange" min="0" max="45" step="1" style="width:160px;">
     </div>
 
     <div class="row"><div class="l"><b>🗑️ รีเซ็ตเกม</b><small>ลบเซฟทั้งหมด เริ่มใหม่</small></div>

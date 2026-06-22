@@ -85,6 +85,9 @@ const CONFIG = {
   defaultFieldScale: 1,            // 0.75 | 1 | 1.3
   defaultFieldBottom: 5,           // % ระยะห่างขอบล่าง
   defaultGroundH: 32,              // % ความสูงพื้นดิน
+  defaultSeedPos: 'center',        // ตำแหน่งแถบเลือกผัก: left | center | right
+  defaultSeedScale: 1,             // ขนาดแถบเลือกผัก: 0.75 | 1 | 1.3
+  defaultSeedBottom: 0,            // % ความสูงแถบเลือกผัก (ดันขึ้นจากขอบล่าง)
 
   // ----- ฉาก/ภาพ (โหมดเบา) — ลดของที่กิน GPU ตลอดเวลา -----
   scene: {
@@ -158,6 +161,9 @@ function freshState(){
     fieldScale: CONFIG.defaultFieldScale,
     fieldBottom: CONFIG.defaultFieldBottom,
     groundH: CONFIG.defaultGroundH,
+    seedPos: CONFIG.defaultSeedPos,
+    seedScale: CONFIG.defaultSeedScale,
+    seedBottom: CONFIG.defaultSeedBottom,
     lastSave: Date.now(),
   };
 }
@@ -347,6 +353,26 @@ function applyLayout(){
     fieldEl.style.transform=`translateX(-50%) scale(${sc})`;
   }
   gardenerEl.style.bottom = 'auto';
+
+  // ----- แถบเลือกผัก (seedbar) — ปรับ ตำแหน่ง/ขนาด/ความสูง แยกจากฟาร์ม -----
+  const sb = $('#seedbar');
+  if(sb){
+    const ss = S.seedScale||1, sbm = S.seedBottom||0;
+    sb.style.bottom = sbm+'%';
+    if(S.seedPos==='left'){
+      sb.style.left='1%'; sb.style.right='auto';
+      sb.style.transformOrigin='bottom left';
+      sb.style.transform=`scale(${ss})`;
+    }else if(S.seedPos==='right'){
+      sb.style.left='auto'; sb.style.right='1%';
+      sb.style.transformOrigin='bottom right';
+      sb.style.transform=`scale(${ss})`;
+    }else{
+      sb.style.left='50%'; sb.style.right='auto';
+      sb.style.transformOrigin='bottom center';
+      sb.style.transform=`translateX(-50%) scale(${ss})`;
+    }
+  }
 }
 
 function gridColsFor(n){
@@ -868,6 +894,12 @@ function bindUI(){
   $('#settingBtn').onclick=()=>{ refreshSettingUI(); openModal('settingModal'); };
   $('#doPrestige').onclick=doPrestige;
 
+  // ---- เมนูยุบ (☰) — เปิด/ปิด dropdown + คลิกที่อื่นแล้วปิด ----
+  $('#menuBtn').onclick=e=>{ e.stopPropagation(); $('#menuDrop').classList.toggle('open'); };
+  document.addEventListener('click', e=>{
+    const w=$('#menuWrap'); if(w && !w.contains(e.target)) $('#menuDrop').classList.remove('open');
+  });
+
   // ---- settings ----
   document.querySelectorAll('#posBtns button').forEach(b=>{
     b.onclick=()=>{ S.fieldPos=b.dataset.pos; applyLayout(); refreshSettingUI(); save(); };
@@ -879,6 +911,15 @@ function bindUI(){
   $('#bottomRange').onchange=save;
   $('#groundRange').oninput=e=>{ S.groundH=+e.target.value; applyLayout(); };
   $('#groundRange').onchange=save;
+  // ---- ตั้งค่าแถบเลือกผัก ----
+  document.querySelectorAll('#seedPosBtns button').forEach(b=>{
+    b.onclick=()=>{ S.seedPos=b.dataset.seedpos; applyLayout(); refreshSettingUI(); save(); };
+  });
+  document.querySelectorAll('#seedScaleBtns button').forEach(b=>{
+    b.onclick=()=>{ S.seedScale=+b.dataset.seedscale; applyLayout(); refreshSettingUI(); save(); };
+  });
+  $('#seedBottomRange').oninput=e=>{ S.seedBottom=+e.target.value; applyLayout(); };
+  $('#seedBottomRange').onchange=save;
   $('#resetBtn').onclick=()=>{
     if(confirm('ลบเซฟทั้งหมดและเริ่มใหม่?')){
       try{ localStorage.removeItem(KEY); }catch(e){}
@@ -910,6 +951,7 @@ function bindUI(){
 }
 function openModal(id){
   document.querySelectorAll('.modal').forEach(m=>m.classList.remove('show'));
+  const md=$('#menuDrop'); if(md) md.classList.remove('open');   // ปิด ☰ เมื่อเปิดแผง
   $('#'+id).classList.add('show');
 }
 
@@ -920,6 +962,11 @@ function refreshSettingUI(){
     b.classList.toggle('on', +b.dataset.scale===S.fieldScale));
   $('#bottomRange').value = S.fieldBottom;
   $('#groundRange').value = S.groundH;
+  document.querySelectorAll('#seedPosBtns button').forEach(b=>
+    b.classList.toggle('on', b.dataset.seedpos===S.seedPos));
+  document.querySelectorAll('#seedScaleBtns button').forEach(b=>
+    b.classList.toggle('on', +b.dataset.seedscale===S.seedScale));
+  $('#seedBottomRange').value = S.seedBottom;
 }
 
 init();
