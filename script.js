@@ -39,6 +39,11 @@ const CONFIG = {
   goldenBaseChance: 0.04,          // โอกาสพื้นฐานได้ผักทอง
   goldenMult: 5,                   // ผักทองขายได้กี่เท่า
 
+  // ----- 🌈 ผักกลายพันธุ์ (Mutant) — หายากกว่าผักทอง จ่ายหนักกว่า -----
+  mutantBaseChance: 0.004,         // โอกาสพื้นฐานได้ผักกลายพันธุ์ (ตอนปลูก)
+  mutantMult: 30,                  // ผักกลายพันธุ์ขายได้กี่เท่า (ทับผักทอง)
+  mutantBoostAdd: 0.02,            // +โอกาสกลายพันธุ์ระหว่างโปรยปุ๋ย
+
   // ----- Prestige / Spirit -----
   prestigeDivisor: 1e6,            // spirit = √(เหรียญสะสม ÷ ค่านี้)
   spiritBonusPer: 0.05,            // โบนัสมูลค่าขาย +x ต่อ 1 spirit
@@ -67,11 +72,30 @@ const CONFIG = {
   gardenerSpeedBase: 32,           // ความเร็วเดินฐาน (% ต่อวินาที โดยประมาณ)
   gardenerWorkMs: 450,             // เวลายืนก้มทำงานที่แปลง (ms, หารด้วย speed)
 
+  // ----- 🌦️ ฤดูกาล — วงรอบยาวกว่าอากาศรายวัน ปรับความเร็วโต & ราคาขายทั้งฟาร์ม -----
+  seasonLength: 300,               // วินาทีต่อ 1 ฤดู (เวลาจริง)
+  // grow=ตัวคูณความเร็วโต, sell=ตัวคูณราคาขาย, tint=สีคลุมฉากบางๆ
+  seasons: [
+    {id: 'spring', em: '🌸', nm: 'ใบไม้ผลิ', grow: 1.25, sell: 1.00, tint: 'rgba(120,220,120,.10)', desc: 'พืชโตไว ราคาปกติ'},
+    {id: 'summer', em: '☀️', nm: 'ฤดูร้อน',  grow: 0.85, sell: 1.30, tint: 'rgba(255,200,90,.12)',  desc: 'ขายแพง แต่โตช้า'},
+    {id: 'rainy',  em: '🌧️', nm: 'ฤดูฝน',    grow: 1.45, sell: 0.90, tint: 'rgba(90,150,220,.12)',  desc: 'โตไวสุด แต่ราคาตก'},
+    {id: 'autumn', em: '🍂', nm: 'ใบไม้ร่วง', grow: 1.00, sell: 1.18, tint: 'rgba(210,130,60,.12)',  desc: 'สมดุล ราคาดีนิดหน่อย'},
+  ],
+
   // ----- Easter eggs -----
   shootingStarReward: 100,         // ดาวตก คลิกได้กี่เหรียญ
   shootingStarChance: 0.5,         // โอกาสเกิดดาวตก (ตอนกลางคืน)
   catFertReward: 2,                // แมวจรให้ปุ๋ยกี่หน่วย
   catChance: 0.4,                  // โอกาสแมวเดินผ่าน
+
+  // ----- 🐛 ศัตรูพืช — โผล่บนแปลงที่กำลังโต ถ้าไม่คลิกไล่ทันจะกัดผัก -----
+  pest: {
+    checkMs: 26000,                // เช็คทุกกี่ ms ว่าจะมีศัตรูพืชโผล่ไหม
+    chance: 0.5,                   // โอกาสโผล่ในแต่ละครั้งที่เช็ค
+    lifetime: 8000,                // มีเวลากี่ ms ก่อนมันกัดผัก
+    reward: 0.25,                  // ไล่ทันได้เหรียญ = ราคาขายผัก × ค่านี้
+    destroys: false,               // true=ทำลายต้นทิ้ง, false=รีเซ็ตความโต (ให้อภัยกว่า)
+  },
 
   // ----- เควส -----
   questNeedMin: 10,                // ต้องส่งอย่างน้อยกี่ต้น
@@ -127,6 +151,23 @@ const CONFIG = {
     {id: 'gold',   nm: '🍀 เมล็ดนำโชค',  desc: 'เพิ่มโอกาสผักทองคำ',     base: 1000, mult: 2.0,  eff: l => l * 0.015},
   ],
 
+  // ----- 🌱 โปรยปุ๋ย (Active Boost) — กดใช้ปุ๋ยเพื่อเร่งโตทั้งฟาร์มชั่วคราว -----
+  fertBoost: {
+    cost: 8,            // ใช้ปุ๋ยกี่หน่วยต่อการโปรย 1 ครั้ง
+    duration: 75,       // โบนัสอยู่กี่วินาที (ฐาน — ต่อได้ด้วย ⏱️ ปุ๋ยอึด)
+    growMult: 2.5,      // ตัวคูณความเร็วโตระหว่างเปิด
+    goldenAdd: 0.20,    // +โอกาสผักทองระหว่างเปิด
+  },
+
+  // ----- 🏪 ร้านปุ๋ย — อัปเกรดถาวร ซื้อด้วย "ปุ๋ย" เท่านั้น (เงินซื้อไม่ได้) -----
+  // base=ปุ๋ยที่ใช้เลเวลแรก, mult=คูณราคาต่อเลเวล, eff=ผล ณ เลเวล l, max=เลเวลสูงสุด
+  fertShop: [
+    {id: 'richSoil',    nm: '🌾 ดินอุดม',    desc: 'ผลผลิตทุกผัก +6%/lv ถาวร',      base: 12, mult: 1.55, max: 25, eff: l => 1 + l * 0.06},
+    {id: 'compostKing', nm: '💩 ราชาปุ๋ย',   desc: 'โอกาสได้ปุ๋ยตอนเก็บ +3%/lv',    base: 15, mult: 1.5,  max: 20, eff: l => l * 0.03},
+    {id: 'fertGold',    nm: '✨ ปุ๋ยทองคำ',  desc: 'โอกาสได้ผักทองคำ +1.2%/lv',     base: 20, mult: 1.6,  max: 20, eff: l => l * 0.012},
+    {id: 'longBoost',   nm: '⏱️ ปุ๋ยอึด',    desc: 'โปรยปุ๋ยออกฤทธิ์นานขึ้น +12 วิ/lv', base: 18, mult: 1.5,  max: 12, eff: l => l * 12},
+  ],
+
   // ----- สภาพอากาศ: grow=ตัวคูณความเร็วโต, next=[min,max] วินาทีที่อยู่ -----
   weathers: {
     sun:   {em: '☀️', nm: 'แดด',  grow: 1.0,  next: [40, 80]},
@@ -139,6 +180,8 @@ const CONFIG = {
 // ----- ทางลัดอ้างถึง CONFIG (ของเดิมหลายจุดใช้ชื่อสั้น) -----
 const CROPS = CONFIG.crops;
 const UPGRADES = CONFIG.upgrades;
+const FERTSHOP = CONFIG.fertShop;
+const SEASONS = CONFIG.seasons;
 const WEATHERS = CONFIG.weathers;
 const PLOT_BASE = CONFIG.plotBase;
 const PLOT_MAX = CONFIG.plotMax;
@@ -155,6 +198,8 @@ function freshState(){
     selected: CONFIG.startSelected,
     auto: CONFIG.startAuto,
     upgrades: {},                  // id->level
+    fertUp: {},                    // ร้านปุ๋ย: id->level
+    boostEnds: 0,                  // โปรยปุ๋ย: timestamp ที่โบนัสหมดอายุ (0 = ไม่มี)
     mastery: {},                   // cropId -> harvested count
     quest: null,
     fieldPos: CONFIG.defaultFieldPos,
@@ -192,6 +237,17 @@ const upDef = id => UPGRADES.find(u=>u.id===id);
 const upCost = u => Math.floor(u.base * Math.pow(u.mult, upLvl(u.id)));
 const upEff = id => { const u = upDef(id); return u ? u.eff(upLvl(id)) : 1; };  // ผลของอัปเกรด ณ เลเวลปัจจุบัน
 
+// ----- ร้านปุ๋ย (ซื้อด้วยปุ๋ย) -----
+const fertUpLvl  = id => (S.fertUp && S.fertUp[id]) || 0;
+const fertUpDef  = id => FERTSHOP.find(u => u.id === id);
+const fertUpCost = u  => Math.floor(u.base * Math.pow(u.mult, fertUpLvl(u.id)));
+const fertEff    = id => { const u = fertUpDef(id); return u ? u.eff(fertUpLvl(id)) : 0; };  // ผล ณ เลเวลปัจจุบัน
+
+// ----- โปรยปุ๋ย (Active Boost) -----
+const fertBoostActive   = () => S.boostEnds && Date.now() < S.boostEnds;
+const fertBoostLeft     = () => fertBoostActive() ? Math.ceil((S.boostEnds - Date.now())/1000) : 0;
+const fertBoostDuration = () => CONFIG.fertBoost.duration + fertEff('longBoost');
+
 // ฟอร์แมตเลขย่อ 1.2K / 3.4M / 8.9B …
 function fmt(n){
   n = Math.floor(n);
@@ -213,13 +269,20 @@ function masteryGrow(cropId){
   return 1 + Math.min(CONFIG.masteryGrowMax, Math.floor(h/CONFIG.masteryGrowEvery)*CONFIG.masteryGrowPer);
 }
 
+// ---------- ฤดูกาล ----------
+let season = 0;                              // index ใน SEASONS (วนตามลำดับ)
+let seasonTimer = CONFIG.seasonLength;
+const curSeason = () => SEASONS[season];
+
 // ---------- สภาพอากาศ ----------
 let weather = 'sun';
 function growMult(cropId){
   return WEATHERS[weather].grow
+       * curSeason().grow
        * upEff('speed')
        * masteryGrow(cropId)
-       * (1 + S.spirit*CONFIG.spiritGrowPer);
+       * (1 + S.spirit*CONFIG.spiritGrowPer)
+       * (fertBoostActive() ? CONFIG.fertBoost.growMult : 1);
 }
 
 // ---------- เวลากลางวัน/กลางคืน ----------
@@ -252,6 +315,7 @@ function init(){
 
   computeOffline();
   renderWeather();
+  renderSeason();
   weatherEl.textContent = WEATHERS[weather].em+' '+WEATHERS[weather].nm;
 
   // loops — เดินเกมด้วย setInterval (CPU น้อยกว่า rAF) · หน้าต่างถูกบัง → หยุด
@@ -270,6 +334,7 @@ function init(){
   gardenerLoop();
   setInterval(maybeShootingStar, 8000);
   setInterval(maybeCat, 22000);
+  setInterval(maybePest, CONFIG.pest.checkMs);
   window.addEventListener('beforeunload', save);
 }
 
@@ -294,12 +359,13 @@ function computeOffline(){
       if(S.auto){
         const cycles = Math.floor(Math.min(elapsed, dt+realGrow)/realGrow);
         for(let i=0;i<cycles;i++){
-          earned += sellValue(c, p.golden && i===0);
+          earned += sellValue(c, p.golden && i===0, p.mutant && i===0);
           harvested++;
           S.mastery[c.id]=(S.mastery[c.id]||0)+1;
         }
         p.plantedAt = Date.now() - (elapsed % realGrow)*1000;
-        p.golden = Math.random() < goldenChance();
+        const mut = Math.random() < mutantChance();
+        p.mutant = mut; p.golden = !mut && Math.random() < goldenChance();
       }
     }
   });
@@ -320,13 +386,23 @@ function computeOffline(){
 //  มูลค่าขาย / โอกาสผักทอง
 // =================================================================
 let market = {};  // cropId -> ตัวคูณราคา
-function sellValue(c, golden){
+function sellValue(c, golden, mutant){
   const m = market[c.id]||1;
-  let v = c.sell * m * upEff('value') * masteryMult(c.id) * spiritBonus();
-  if(golden) v *= CONFIG.goldenMult;
+  let v = c.sell * m * upEff('value') * masteryMult(c.id) * spiritBonus()
+        * fertEff('richSoil') * curSeason().sell;
+  if(mutant) v *= CONFIG.mutantMult;       // กลายพันธุ์มาก่อน (จ่ายหนักกว่าทอง)
+  else if(golden) v *= CONFIG.goldenMult;
   return v;
 }
-function goldenChance(){ return CONFIG.goldenBaseChance + upEff('gold'); }
+function goldenChance(){
+  return CONFIG.goldenBaseChance + upEff('gold') + fertEff('fertGold')
+       + (fertBoostActive() ? CONFIG.fertBoost.goldenAdd : 0);
+}
+function mutantChance(){
+  return CONFIG.mutantBaseChance + (fertBoostActive() ? CONFIG.mutantBoostAdd : 0);
+}
+// โอกาสได้ปุ๋ยตอนเก็บ = บ่อปุ๋ย (เงิน) + ราชาปุ๋ย (ปุ๋ย)
+function fertDropChance(){ return upEff('fert') + fertEff('compostKing'); }
 
 // =================================================================
 //  FIELD / PLOTS
@@ -381,6 +457,7 @@ function gridColsFor(n){
 }
 
 function layoutField(){
+  if(typeof clearPest==='function') clearPest();   // ลบศัตรูพืชค้าง ก่อนสร้างกริดใหม่
   const cols = gridColsFor(S.plotCount);
   fieldEl.style.gridTemplateColumns = `repeat(${cols},1fr)`;
   fieldEl.innerHTML = '';
@@ -428,7 +505,8 @@ function plant(i, cropId){
   if(S.totalEarned < c.unlock) return false;
   if(S.coins < c.cost){ if(!cropId) toast('เหรียญไม่พอปลูก '+c.em); return false; }
   S.coins -= c.cost;
-  S.plots[i] = {crop:c.id, plantedAt:Date.now(), golden: Math.random()<goldenChance()};
+  const mutant = Math.random()<mutantChance();
+  S.plots[i] = {crop:c.id, plantedAt:Date.now(), golden: !mutant && Math.random()<goldenChance(), mutant};
   updateHUD(); renderPlot(i);
   return true;
 }
@@ -443,14 +521,16 @@ function isReady(p){
 function harvest(i, el){
   const p = S.plots[i]; if(!p) return;
   const c = crop(p.crop);
-  const val = sellValue(c, p.golden);
+  const val = sellValue(c, p.golden, p.mutant);
   S.coins += val; S.totalEarned += val;
   S.mastery[c.id] = (S.mastery[c.id]||0)+1;
   questProgress(c.id);
-  if(upLvl('fert')>0 && Math.random() < upEff('fert')) S.fert += 1;
-  floatText(el, (p.golden?'✨':'🪙')+'+'+fmt(val), p.golden?'#ffd34d':'#7ed957');
+  const fc = fertDropChance(); if(fc>0 && Math.random() < fc) S.fert += 1;
+  const icon = p.mutant?'🌈':p.golden?'✨':'🪙';
+  const col  = p.mutant?'#54e0ff':p.golden?'#ffd34d':'#7ed957';
+  floatText(el, icon+'+'+fmt(val), col);
   S.plots[i] = null;
-  el.classList.remove('ready','golden');
+  el.classList.remove('ready','golden','mutant');
   if(S.auto) plant(i);
   else renderPlot(i);
   updateHUD();
@@ -463,7 +543,7 @@ function renderPlot(i){
   const cs = el.querySelector('.crop'), bar = el.querySelector('.progbar i');
   if(!cs) return;
   if(!p){
-    if(el._st!=='empty'){ cs.textContent=''; bar.style.width='0%'; el.classList.remove('ready','golden'); el._st='empty'; el._pct=-1; }
+    if(el._st!=='empty'){ cs.textContent=''; bar.style.width='0%'; el.classList.remove('ready','golden','mutant'); el._st='empty'; el._pct=-1; }
     return;
   }
   const c = crop(p.crop);
@@ -477,6 +557,7 @@ function renderPlot(i){
   bar.style.width = pct+'%';
   el.classList.toggle('ready', prog>=1);
   el.classList.toggle('golden', prog>=1 && p.golden);
+  el.classList.toggle('mutant', prog>=1 && p.mutant);
 }
 
 // =================================================================
@@ -545,9 +626,28 @@ function autoPlantBest(i){
 function tick(dt){
   gameClock = (gameClock + dt) % DAY_LEN;
   weatherTick(dt);
+  seasonTick(dt);
   marketTick(dt);
   for(let i=0;i<S.plotCount;i++) renderPlot(i);
   updateScene();
+  updateBoostBtn();
+}
+
+// ---------- ฤดูกาล ----------
+function seasonTick(dt){
+  seasonTimer -= dt;
+  if(seasonTimer<=0){
+    season = (season+1) % SEASONS.length;
+    seasonTimer = CONFIG.seasonLength;
+    const s = curSeason();
+    renderSeason();
+    toast(`${s.em} เข้าสู่${s.nm} — ${s.desc}`);
+  }
+}
+function renderSeason(){
+  const s = curSeason();
+  const el = $('#seasonStat'); if(el) el.textContent = s.em+' '+s.nm;
+  const tint = $('#seasonTint'); if(tint) tint.style.background = s.tint;
 }
 
 // ---------- weather ----------
@@ -736,6 +836,50 @@ function maybeCat(){
   setTimeout(()=>{ cat.style.display='none'; cat.onclick=null; }, 6200);
 }
 
+// ---------- 🐛 ศัตรูพืช ----------
+let pestEl = null, pestRef = null, pestTimer = null, pestIdx = -1;
+function clearPest(){
+  if(pestTimer){ clearTimeout(pestTimer); pestTimer = null; }
+  if(pestEl && pestEl.parentNode) pestEl.parentNode.removeChild(pestEl);
+  pestEl = null; pestRef = null; pestIdx = -1;
+}
+function maybePest(){
+  if(document.hidden || pestEl) return;              // ทีละตัว และไม่เกิดตอนแท็บถูกบัง
+  if(Math.random() > CONFIG.pest.chance) return;
+  const cands = [];                                  // เฉพาะแปลงที่กำลังโต (ยังไม่สุก)
+  for(let i=0;i<S.plotCount;i++){ const p=S.plots[i]; if(p && !isReady(p)) cands.push(i); }
+  if(!cands.length) return;
+  const i = cands[Math.floor(Math.random()*cands.length)];
+  const plot = fieldEl.children[i]; if(!plot) return;
+  pestIdx = i; pestRef = S.plots[i];
+  pestEl = document.createElement('div');
+  pestEl.className = 'pest';
+  pestEl.textContent = Math.random()<0.5 ? '🐛' : '🐌';
+  pestEl.onclick = e => { e.stopPropagation(); resolvePest(true); };
+  plot.appendChild(pestEl);
+  pestTimer = setTimeout(()=>resolvePest(false), CONFIG.pest.lifetime);
+}
+function resolvePest(saved){
+  const i = pestIdx, ref = pestRef;
+  const stillThere = i>=0 && ref && S.plots[i]===ref;   // ต้นเดิมยังอยู่ไหม (อาจถูกเก็บไปแล้ว)
+  if(saved){
+    if(stillThere){
+      const r = Math.floor(sellValue(crop(ref.crop), false, false) * CONFIG.pest.reward);
+      if(r>0 && pestEl){ S.coins+=r; S.totalEarned+=r; floatText(pestEl,'🪙+'+fmt(r),'#7ed957'); updateHUD(); }
+      toast('🐛 ไล่ศัตรูพืชสำเร็จ! ผักปลอดภัย');
+    }
+  }else if(stillThere){
+    if(CONFIG.pest.destroys){
+      S.plots[i]=null; renderPlot(i); if(S.auto) plant(i);
+      toast('🐛 ศัตรูพืชกินผักไป 1 ต้น!');
+    }else{
+      ref.plantedAt = Date.now(); ref.golden = false; ref.mutant = false; renderPlot(i);
+      toast('🐛 ศัตรูพืชกัดผัก — ต้องเริ่มโตใหม่!');
+    }
+  }
+  clearPest();
+}
+
 // =================================================================
 //  UI: seedbar, HUD, modals
 // =================================================================
@@ -779,6 +923,63 @@ function floatText(el,txt,color){
   const f=document.createElement('div'); f.className='float'; f.textContent=txt;
   f.style.color=color||'#fff'; f.style.left=(r.left+r.width/2)+'px'; f.style.top=r.top+'px';
   document.body.appendChild(f); setTimeout(()=>f.remove(),1000);
+}
+
+// ---------- 🌱 โปรยปุ๋ย (Active Boost) ----------
+function activateBoost(){
+  if(fertBoostActive()){ toast('🌱 กำลังเร่งโตอยู่แล้ว!'); return; }
+  const cost = CONFIG.fertBoost.cost;
+  if(S.fert < cost){ toast('💩 ปุ๋ยไม่พอ — ต้องมี '+cost); return; }
+  S.fert -= cost;
+  const dur = fertBoostDuration();
+  S.boostEnds = Date.now() + dur*1000;
+  toast(`🌱 โปรยปุ๋ย! เร่งโต x${CONFIG.fertBoost.growMult} นาน ${dur} วิ`);
+  updateHUD(); updateBoostBtn(); save();
+}
+let _boostLbl = null, _boostGlow = null;
+function updateBoostBtn(){
+  const b = $('#boostBtn'); if(!b) return;
+  const on = fertBoostActive();
+  const lbl = on ? '🌱 เร่งโต '+fertBoostLeft()+'s'
+                 : '🌱 โปรยปุ๋ย ('+CONFIG.fertBoost.cost+'💩)';
+  if(lbl !== _boostLbl){ b.textContent = lbl; _boostLbl = lbl; }
+  if(on !== _boostGlow){
+    b.classList.toggle('boosting', on);
+    const g = $('#fertGlow'); if(g) g.classList.toggle('on', on);
+    _boostGlow = on;
+  }
+}
+
+// ---------- 🏪 ร้านปุ๋ย ----------
+function fertShopEffText(u){
+  const lv = fertUpLvl(u.id), e = u.eff(lv);
+  if(u.id==='richSoil')    return `ผลผลิต x${e.toFixed(2)}`;
+  if(u.id==='compostKing') return `โอกาสปุ๋ย +${Math.round(e*100)}%`;
+  if(u.id==='fertGold')    return `ผักทอง +${Math.round(e*100)}%`;
+  if(u.id==='longBoost')   return `โปรยปุ๋ยนานขึ้น +${e} วิ`;
+  return '';
+}
+function renderFertShop(){
+  const list = $('#fertShopList'); list.innerHTML='';
+  const head = document.createElement('div');
+  head.className='row'; head.style.background='rgba(126,217,87,.08)';
+  head.innerHTML = `<div class="l"><b>💩 ปุ๋ยที่มี</b><small>ได้ปุ๋ยจากการเก็บเกี่ยว & แมวจร</small></div>
+    <div style="color:var(--green);font-weight:700;font-size:17px;">${fmt(S.fert)}</div>`;
+  list.appendChild(head);
+  FERTSHOP.forEach(u=>{
+    const lv = fertUpLvl(u.id), maxed = u.max && lv>=u.max, cost = fertUpCost(u);
+    const r = document.createElement('div'); r.className='row';
+    r.innerHTML = `<div class="l"><b>${u.nm}</b> <span class="lvl">Lv.${lv}${u.max?'/'+u.max:''}</span>
+      <small>${u.desc} — ตอนนี้ ${fertShopEffText(u)}</small></div>
+      <button class="btn">${maxed?'สูงสุด':'💩'+fmt(cost)}</button>`;
+    const btn = r.querySelector('button');
+    if(maxed){ btn.disabled = true; }
+    else btn.onclick = ()=>{
+      if(S.fert < cost){ toast('💩 ปุ๋ยไม่พอ'); return; }
+      S.fert -= cost; S.fertUp[u.id] = lv+1; updateHUD(); renderFertShop(); save();
+    };
+    list.appendChild(r);
+  });
 }
 
 // ---------- shop ----------
@@ -887,6 +1088,8 @@ function doPrestige(){
 //  bind UI
 // =================================================================
 function bindUI(){
+  $('#boostBtn').onclick=activateBoost;
+  $('#fertShopBtn').onclick=()=>{ renderFertShop(); openModal('fertShopModal'); };
   $('#shopBtn').onclick=()=>{ renderShop(); openModal('shopModal'); };
   $('#masteryBtn').onclick=()=>{ renderMastery(); openModal('masteryModal'); };
   $('#questBtn').onclick=()=>{ renderQuests(); openModal('questModal'); };
@@ -946,8 +1149,10 @@ function bindUI(){
       if(c && S.totalEarned>=c.unlock){ S.selected=c.id; buildSeedbar(); }
     }
     if(e.code==='Space'){ e.preventDefault(); $('#autoBtn').click(); }
+    if(e.key==='b'||e.key==='B'){ activateBoost(); }
   });
   updateHUD();
+  updateBoostBtn();
 }
 function openModal(id){
   document.querySelectorAll('.modal').forEach(m=>m.classList.remove('show'));

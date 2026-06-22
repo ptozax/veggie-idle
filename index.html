@@ -77,6 +77,16 @@
   .plot.ready .crop{animation:bob .9s infinite ease-in-out;}
   .plot.ready{box-shadow:0 6px 0 rgba(0,0,0,.25),0 0 18px 4px rgba(126,217,87,.55), inset 0 2px 6px rgba(255,255,255,.06);}
   .plot.golden{box-shadow:0 6px 0 rgba(0,0,0,.25),0 0 22px 6px rgba(255,211,77,.8);}
+  /* 🌈 ผักกลายพันธุ์: เรืองสีรุ้ง + ตัวผักไล่เฉดสี (เกิดเฉพาะต้นหายาก จึงไม่กิน GPU) */
+  .plot.mutant{box-shadow:0 6px 0 rgba(0,0,0,.25),0 0 26px 7px rgba(84,224,255,.85);animation:mutbox 1.6s linear infinite;}
+  .plot.mutant .crop{animation:bob .9s infinite ease-in-out, muthue 2s linear infinite;}
+  @keyframes muthue{from{filter:hue-rotate(0deg) drop-shadow(0 2px 3px rgba(0,0,0,.4))}to{filter:hue-rotate(360deg) drop-shadow(0 2px 3px rgba(0,0,0,.4))}}
+  @keyframes mutbox{0%,100%{box-shadow:0 6px 0 rgba(0,0,0,.25),0 0 22px 6px rgba(84,224,255,.7)}50%{box-shadow:0 6px 0 rgba(0,0,0,.25),0 0 30px 9px rgba(180,120,255,.85)}}
+  /* 🐛 ศัตรูพืช: เกาะบนแปลง คลิกเพื่อไล่ */
+  .plot .pest{position:absolute;top:-6px;right:-4px;font-size:24px;z-index:7;cursor:pointer;
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));animation:pestbob .6s ease-in-out infinite;}
+  .plot .pest:hover{transform:scale(1.2);}
+  @keyframes pestbob{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-3px) rotate(8deg)}}
   @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
   .progbar{position:absolute;left:6px;right:6px;bottom:5px;height:5px;border-radius:3px;
     background:rgba(0,0,0,.35);overflow:hidden;}
@@ -124,6 +134,17 @@
   .btn.on{background:var(--green);color:#10221a;border-color:var(--green);}
   .btn.prestige{background:linear-gradient(135deg,#7c4dff,#b388ff);color:#fff;border:none;}
   .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+  /* 🌱 ปุ่มโปรยปุ๋ย: เรืองแสงเขียวตอนกำลังเร่งโต */
+  #boostBtn.boosting{background:linear-gradient(135deg,#3fa34d,#7ed957);color:#0c1a10;
+    border-color:#7ed957;animation:bpulse 1.2s ease-in-out infinite;}
+  @keyframes bpulse{0%,100%{box-shadow:0 0 8px rgba(126,217,87,.5)}50%{box-shadow:0 0 20px rgba(126,217,87,.9)}}
+  /* แสงเขียวคลุมฉากตอนโปรยปุ๋ย */
+  #fertGlow{position:absolute;inset:0;z-index:5;pointer-events:none;opacity:0;transition:opacity 1.2s;
+    background:radial-gradient(130% 85% at 50% 100%, rgba(126,217,87,.26), transparent 60%);}
+  #fertGlow.on{animation:fgpulse 3s ease-in-out infinite;}
+  @keyframes fgpulse{0%,100%{opacity:.5}50%{opacity:1}}
+  /* 🌦️ โทนสีคลุมฉากตามฤดูกาล (เปลี่ยนช้าๆ ไม่กิน GPU) */
+  #seasonTint{position:absolute;inset:0;z-index:3;pointer-events:none;transition:background 3s linear;}
 
   /* crop selector — กว้างตามเนื้อหา ปรับตำแหน่ง/ขนาดได้จาก JS (applyLayout) */
   #seedbar{position:fixed;bottom:0;z-index:20;display:flex;gap:8px;
@@ -159,6 +180,8 @@
     box-shadow:0 14px 34px rgba(0,0,0,.55);z-index:30;}
   #menuDrop.open{display:flex;}
   #menuDrop .btn{width:100%;text-align:left;}
+  #menuDrop .stat{width:100%;text-align:left;}        /* สถานะ ฤดู/อากาศ/เวลา ในเมนู */
+  .menusep{height:1px;background:var(--line);margin:2px 0;}  /* เส้นคั่นกลุ่มในเมนู */
   .card h2{margin:0 0 4px;font-size:22px;}
   .card .sub{color:var(--muted);font-size:13px;margin-bottom:14px;}
   .row{display:flex;justify-content:space-between;align-items:center;gap:10px;
@@ -208,20 +231,27 @@
     <div id="flash"></div>
     <div id="shooter">🌠</div>
     <div id="cat">🐈</div>
+    <div id="seasonTint"></div>
+    <div id="fertGlow"></div>
   </div>
 
   <div id="topbar">
     <div class="stat">🪙 <b id="coins">0</b></div>
     <div class="stat">💩 ปุ๋ย <b id="fert">0</b></div>
     <div class="stat spirit">✨ <b id="spirit">0</b> <small style="color:#9fb4a3">(+<span id="spiritBonus">0</span>%)</small></div>
-    <div class="stat" id="weatherStat">☀️</div>
-    <div class="stat" id="timeStat">🌅 เช้า</div>
     <div id="spacer"></div>
-    <button class="btn" id="autoBtn">🤖 ปลูกอัตโนมัติ: เปิด</button>
+    <button class="btn" id="boostBtn" title="โปรยปุ๋ยเร่งโตทั้งฟาร์ม (กด B)">🌱 โปรยปุ๋ย</button>
     <div id="menuWrap">
       <button class="btn" id="menuBtn">☰ เมนู</button>
       <div id="menuDrop">
+        <div class="stat" id="seasonStat">🌸 ใบไม้ผลิ</div>
+        <div class="stat" id="weatherStat">☀️</div>
+        <div class="stat" id="timeStat">🌅 เช้า</div>
+        <div class="menusep"></div>
+        <button class="btn" id="autoBtn">🤖 ปลูกอัตโนมัติ: เปิด</button>
+        <div class="menusep"></div>
         <button class="btn" id="shopBtn">⬆️ อัปเกรด</button>
+        <button class="btn" id="fertShopBtn">🏪 ร้านปุ๋ย</button>
         <button class="btn" id="masteryBtn">🌟 ความเชี่ยวชาญผัก</button>
         <button class="btn" id="questBtn">📜 เควส</button>
         <button class="btn prestige" id="prestigeBtn">🔄 รีเบิร์ธ</button>
@@ -238,6 +268,13 @@
     <span class="close" data-close="shopModal">✕</span>
     <h2>⬆️ อัปเกรด</h2><div class="sub">ราคาขึ้นทุกครั้งที่อัป — ไต่ได้ไม่จำกัด</div>
     <div id="shopList"></div>
+  </div></div>
+
+  <!-- Fertilizer shop -->
+  <div class="modal" id="fertShopModal"><div class="card">
+    <span class="close" data-close="fertShopModal">✕</span>
+    <h2>🏪 ร้านปุ๋ย</h2><div class="sub">อัปเกรดถาวร ซื้อด้วย <b>💩 ปุ๋ย</b> เท่านั้น — เก็บผัก & แมวจรเพื่อสะสมปุ๋ย</div>
+    <div id="fertShopList"></div>
   </div></div>
 
   <!-- Mastery -->
