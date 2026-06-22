@@ -142,19 +142,18 @@ function init(){
   renderWeather();
   weatherEl.textContent = WEATHERS[weather].em+' '+WEATHERS[weather].nm;
 
-  // loops — เดินเกม ~10 ครั้ง/วินาที (พอลื่นสำหรับ wallpaper, ประหยัด CPU/GPU กว่าวิ่งเต็ม 60fps มาก)
-  let last = performance.now(), acc = 0;
-  const STEP = 0.1;                         // อัปเดตภาพทุก 100ms
-  function loop(now){
-    if(!document.hidden){                   // หน้าต่างถูกบัง = หยุดวาด (ผักโตตามเวลาจริงอยู่แล้ว)
-      const dt = Math.min(0.25, (now-last)/1000);
-      acc += dt;
-      if(acc >= STEP){ tick(acc); acc = 0; }
-    }
-    last = now;
-    requestAnimationFrame(loop);
+  // loops — เดินเกม 10 ครั้ง/วินาที ด้วย setInterval (ปลุก CPU น้อยกว่า rAF 60fps ~6 เท่า)
+  // หน้าต่างถูกบัง → หยุดสนิท (0 ครั้ง), กลับมา → เริ่มใหม่ (ผักโตตามเวลาจริงอยู่แล้ว)
+  let last = performance.now(), gameTimer = null;
+  function step(){
+    const now = performance.now();
+    const dt = Math.min(0.25, (now-last)/1000); last = now;
+    tick(dt);
   }
-  requestAnimationFrame(loop);
+  function startLoop(){ if(!gameTimer){ last = performance.now(); gameTimer = setInterval(step, 100); } }
+  function stopLoop(){ if(gameTimer){ clearInterval(gameTimer); gameTimer = null; } }
+  startLoop();
+  document.addEventListener('visibilitychange', ()=>{ document.hidden ? stopLoop() : startLoop(); });
 
   setInterval(save, 5000);                 // auto-save ทุก 5 วิ
   gardenerLoop();                          // คนสวนเดิน→ทำงาน (ลูปต่อเนื่อง)
