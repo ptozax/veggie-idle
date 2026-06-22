@@ -24,7 +24,7 @@
   #scene{position:fixed;inset:0;overflow:hidden;transition:background 3s linear;}
 
   /* แสงเรืองรอบดวงอาทิตย์/จันทร์ */
-  #sunGlow{position:absolute;width:46vmax;height:46vmax;border-radius:50%;
+  #sunGlow{position:absolute;width:34vmax;height:34vmax;border-radius:50%;
     transform:translate(-50%,-50%);pointer-events:none;transition:opacity 3s, background 3s;
     background:radial-gradient(circle, rgba(255,236,170,.85) 0%, rgba(255,210,130,.35) 28%, transparent 62%);
     will-change:left,top;}
@@ -32,10 +32,11 @@
     filter:drop-shadow(0 0 26px rgba(255,225,140,.9));transition:filter 2s;
     will-change:left,top;z-index:0;}
   .star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;
-    opacity:0;animation:tw 3s infinite ease-in-out;box-shadow:0 0 4px #fff;}
+    opacity:.6;animation:tw 3s infinite ease-in-out;box-shadow:0 0 3px #fff;}
   @keyframes tw{0%,100%{opacity:.15}50%{opacity:.95}}
   #stars{position:absolute;inset:0;opacity:0;transition:opacity 3s;z-index:1;}
   #stars.off .star{animation-play-state:paused;}  /* หยุด animation ดาวตอนกลางวัน (ประหยัด GPU) */
+  #stars.static .star{animation:none;}             /* โหมดเบา: ดาวนิ่ง ไม่กะพริบ (ประหยัด GPU สุด) */
 
   /* เนินเขาซ้อนชั้น (parallax) */
   #hills{position:absolute;left:0;right:0;bottom:28%;height:40%;z-index:1;}
@@ -56,9 +57,10 @@
     border-radius:100% 100% 0 0 / 100% 100% 0 0;
     box-shadow:0 4px 10px rgba(0,0,0,.2);}
 
-  /* โทนแสงตามเวลา (กลางวัน/เย็น/กลางคืน) คลุมทั้งฉาก */
+  /* โทนแสงตามเวลา (กลางวัน/เย็น/กลางคืน) คลุมทั้งฉาก
+     โหมดเบา: ใช้ alpha overlay ธรรมดา ไม่ใช้ mix-blend-mode (เลี่ยง recomposite ทั้งจอ) */
   #ambient{position:absolute;inset:0;pointer-events:none;z-index:3;
-    background:transparent;transition:background 3s linear;mix-blend-mode:multiply;}
+    background:transparent;transition:background 3s linear;}
 
   /* ===== FIELD / PLOTS ===== */
   #field{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);
