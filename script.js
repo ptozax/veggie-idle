@@ -1122,6 +1122,10 @@ function bindUI(){
   });
   $('#seedBottomRange').oninput=e=>{ S.seedBottom=+e.target.value; applyLayout(); };
   $('#seedBottomRange').onchange=save;
+  $('#reloadBtn').onclick=()=>{
+    save();                 // เซฟก่อน แล้วค่อยโหลดใหม่ (เซฟไม่หาย เพราะ origin เดิม)
+    location.reload();      // reload จะ revalidate script.js → ได้โค้ดเวอร์ชันล่าสุดที่ deploy ไว้
+  };
   $('#resetBtn').onclick=()=>{
     if(confirm('ลบเซฟทั้งหมดและเริ่มใหม่?')){
       try{ localStorage.removeItem(KEY); }catch(e){}
