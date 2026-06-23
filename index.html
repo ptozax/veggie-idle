@@ -104,9 +104,10 @@
   /* weather overlays */
   #weatherLayer{position:absolute;inset:0;pointer-events:none;z-index:7;overflow:hidden;}
   .rain{position:absolute;top:-20px;width:2px;height:16px;background:linear-gradient(transparent,#9cc7ff);
-    opacity:.6;animation:fall linear infinite;}
+    opacity:.6;animation:fall linear infinite;will-change:transform;}
   @keyframes fall{to{transform:translateY(110vh);}}
-  .cloud{position:absolute;font-size:70px;opacity:.85;animation:drift linear infinite;filter:drop-shadow(0 6px 6px rgba(0,0,0,.15));}
+  /* will-change:transform → GPU "prerender" ตัวเมฆ+เงาเป็น texture ครั้งเดียว แล้วเลื่อน layer (ไม่ repaint เงาทุกเฟรม) */
+  .cloud{position:absolute;font-size:70px;opacity:.85;animation:drift linear infinite;filter:drop-shadow(0 6px 6px rgba(0,0,0,.15));will-change:transform;}
   @keyframes drift{from{transform:translateX(-120px)}to{transform:translateX(110vw)}}
   #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:8;}
 

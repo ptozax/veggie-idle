@@ -775,7 +775,7 @@ function renderWeather(){
       const cl=document.createElement('div');
       cl.className='cloud'; cl.textContent='☁️';
       cl.style.top=(5+Math.random()*30)+'%';
-      cl.style.animationDuration=(25+Math.random()*30)+'s';
+      cl.style.animationDuration=(90+Math.random()*90)+'s';
       cl.style.animationDelay=(-Math.random()*30)+'s';
       cl.style.fontSize=(50+Math.random()*40)+'px';
       L.appendChild(cl);
