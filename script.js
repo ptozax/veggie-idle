@@ -563,16 +563,15 @@ function renderPlot(i){
 // =================================================================
 //  คนสวนเดินทำงานอัตโนมัติ
 // =================================================================
+let _gx = 10, _gy = 60;   // ตำแหน่งคนสวนปัจจุบัน (หน่วย vw/vh) — เก็บใน JS แทนการ parse style ทุกครั้ง
 function walkTo(xPct, yPct, done){
-  const px = parseFloat(gardenerEl.style.left||'10');
-  const py = parseFloat(gardenerEl.style.top ||'60');
-  const dist = Math.hypot(xPct-px, yPct-py);
+  const dist = Math.hypot(xPct-_gx, yPct-_gy);
   const speed = upEff('garden');
   const dur = Math.max(0.25, dist / (CONFIG.gardenerSpeedBase*speed));
-  gardenerEl.classList.toggle('flip', xPct < px);
-  gardenerEl.style.transition = `left ${dur}s linear, top ${dur}s linear`;
-  gardenerEl.style.left = xPct + '%';
-  gardenerEl.style.top  = yPct + '%';
+  gardenerEl.classList.toggle('flip', xPct < _gx);
+  gardenerEl.style.transition = `transform ${dur}s linear`;
+  gardenerEl.style.transform = `translate(${xPct}vw,${yPct}vh)`;
+  _gx = xPct; _gy = yPct;
   setTimeout(done, dur*1000);
 }
 

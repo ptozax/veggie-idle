@@ -94,11 +94,14 @@
   .plot.locked{opacity:.35;cursor:not-allowed;font-size:22px;}
   .lockcost{font-size:11px;color:var(--gold);position:absolute;bottom:6px;text-shadow:0 1px 2px #000;}
 
-  /* gardener */
-  #gardener{position:absolute;font-size:42px;z-index:6;top:60%;left:0;
-    transition:left .9s linear, top .9s linear;filter:drop-shadow(0 4px 4px rgba(0,0,0,.4));}
-  #gardener.flip{transform:scaleX(-1);}
-  #gardener.work{animation:work .4s infinite;}
+  /* gardener — ขยับด้วย transform(translate) → วิ่งบน compositor ไม่ trigger layout/paint ทั้งฉากทุกเฟรม
+     โครงสร้าง: #gardener = layer ตำแหน่ง (translate) · .body ข้างใน = flip + work (แยก transform ไม่ให้ทับกัน) */
+  #gardener{position:absolute;font-size:42px;z-index:6;top:0;left:0;
+    transform:translate(10vw,60vh);transition:transform .9s linear;will-change:transform;
+    filter:drop-shadow(0 4px 4px rgba(0,0,0,.4));}
+  #gardener .body{display:inline-block;}
+  #gardener.flip .body{transform:scaleX(-1);}
+  #gardener.work .body{animation:work .4s infinite;}
   @keyframes work{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-6deg)}}
 
   /* weather overlays */
@@ -227,7 +230,7 @@
     <div id="ground"></div>
     <div id="ambient"></div>
     <div id="field"></div>
-    <div id="gardener">🧑‍🌾</div>
+    <div id="gardener"><span class="body">🧑‍🌾</span></div>
     <div id="weatherLayer"></div>
     <div id="flash"></div>
     <div id="shooter">🌠</div>
