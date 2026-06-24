@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>🌱 ฟาร์มไม่มีวันหยุด — Idle Farm Wallpaper</title>
+<title>🌙 ฟาร์มดวงจันทร์ — Idle Moon Wallpaper</title>
 <style>
   :root{
     --panel: rgba(20,28,22,.86);
@@ -18,7 +18,7 @@
   html,body{margin:0;height:100%;overflow:hidden;
     font-family:"Segoe UI Emoji","Segoe UI",system-ui,sans-serif;
     color:var(--txt); user-select:none; cursor:default;}
-  body{background:#10221a;}
+  body{background:#04060f;}
 
   /* ===== SCENE ===== */
   #scene{position:fixed;inset:0;overflow:hidden;transition:background 3s linear;}
@@ -29,7 +29,7 @@
     background:radial-gradient(circle, rgba(255,236,170,.85) 0%, rgba(255,210,130,.35) 28%, transparent 62%);
     will-change:left,top;}
   #celestial{position:absolute;font-size:62px;left:50%;top:60%;
-    filter:drop-shadow(0 0 26px rgba(255,225,140,.9));transition:filter 2s;
+    filter:drop-shadow(0 0 30px rgba(120,170,255,.95));transition:filter 2s;
     will-change:left,top;z-index:0;}
   .star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;
     opacity:.6;animation:tw 3s infinite ease-in-out;box-shadow:0 0 3px #fff;}
@@ -41,21 +41,25 @@
   /* เนินเขาซ้อนชั้น (parallax) */
   #hills{position:absolute;left:0;right:0;bottom:28%;height:40%;z-index:1;}
   #hills svg{position:absolute;left:0;bottom:0;width:100%;height:100%;}
-  #hills .far  path{fill:#86b4c7;}
-  #hills .mid  path{fill:#5f9070;}
-  #hills .near path{fill:#467a48;}
+  #hills .far  path{fill:#3a4258;}
+  #hills .mid  path{fill:#4a5066;}
+  #hills .near path{fill:#5a5f72;}
   #hills .tree{position:absolute;bottom:0;font-size:30px;filter:drop-shadow(0 4px 4px rgba(0,0,0,.25));}
 
   /* พื้นดิน + ร่องไถ + แนวหญ้า */
+  /* พื้นผิวจันทรา (regolith) — สีเทา + หลุมอุกกาบาตเล็กน้อย */
   #ground{position:absolute;left:0;right:0;bottom:0;height:32%;z-index:2;
     background:
-      repeating-linear-gradient(90deg, rgba(0,0,0,.07) 0 22px, rgba(255,255,255,.04) 22px 44px),
-      radial-gradient(120% 80% at 50% 0%, #7a5230 0%, #5a3a1c 55%, #3f2810 100%);
-    box-shadow:0 -10px 40px rgba(0,0,0,.35) inset;}
-  #ground::before{content:'';position:absolute;left:0;right:0;top:-16px;height:18px;
-    background:linear-gradient(#74bd4f,#519536);
+      radial-gradient(circle at 18% 30%, rgba(0,0,0,.18) 0 12px, transparent 13px),
+      radial-gradient(circle at 62% 22%, rgba(0,0,0,.15) 0 18px, transparent 19px),
+      radial-gradient(circle at 85% 45%, rgba(0,0,0,.16) 0 10px, transparent 11px),
+      radial-gradient(circle at 40% 55%, rgba(0,0,0,.12) 0 22px, transparent 23px),
+      radial-gradient(120% 80% at 50% 0%, #8a8d99 0%, #6a6d7a 55%, #4a4d5a 100%);
+    box-shadow:0 -10px 40px rgba(0,0,0,.45) inset;}
+  #ground::before{content:'';position:absolute;left:0;right:0;top:-12px;height:14px;
+    background:linear-gradient(#b8bcc8,#8a8d99);
     border-radius:100% 100% 0 0 / 100% 100% 0 0;
-    box-shadow:0 4px 10px rgba(0,0,0,.2);}
+    box-shadow:0 4px 10px rgba(0,0,0,.3);}
 
   /* 🏯 ของตกแต่ง — อยู่ระหว่าง layer ต้นไม้บนเนิน (#hills z1) กับ หญ้า/พื้นดิน (#ground z2)
      z-index:1 เท่า hills แต่ DOM อยู่ทีหลัง → หน้าต้นไม้ · ground z2 พ่นทับฐาน → เหมือนปักในหญ้า · โดน ambient (z3) คลุมแสง */
@@ -72,7 +76,7 @@
   #field{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);
     display:grid;gap:10px;z-index:5;}
   .plot{width:74px;height:74px;border-radius:12px;
-    background:linear-gradient(#5b3d22,#3f2914);
+    background:linear-gradient(#2e3550,#1a1f33);
     border:2px solid rgba(0,0,0,.25);
     box-shadow:0 6px 0 rgba(0,0,0,.25), inset 0 2px 6px rgba(255,255,255,.06);
     display:flex;align-items:center;justify-content:center;position:relative;
@@ -116,7 +120,11 @@
     opacity:.6;animation:fall linear infinite;will-change:transform;}
   @keyframes fall{to{transform:translateY(110vh);}}
   /* will-change:transform → GPU "prerender" ตัวเมฆ+เงาเป็น texture ครั้งเดียว แล้วเลื่อน layer (ไม่ repaint เงาทุกเฟรม) */
-  .cloud{position:absolute;font-size:70px;opacity:.85;animation:drift linear infinite;filter:drop-shadow(0 6px 6px rgba(0,0,0,.15));will-change:transform;}
+  /* ฝุ่นจักรวาล — กลุ่มหมอกฟุ้งนุ่ม (ไม่ใช้อิโมจิ เลยไม่เหลี่ยม) */
+  .cloud{position:absolute;width:300px;height:110px;opacity:.85;
+    background:radial-gradient(ellipse 62% 58% at 50% 50%, rgba(205,215,250,.85), rgba(150,170,225,.40) 50%, transparent 75%);
+    border-radius:50%;filter:blur(6px);
+    animation:drift linear infinite;will-change:transform;}
   @keyframes drift{from{transform:translateX(-120px)}to{transform:translateX(110vw)}}
   #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:8;}
 
@@ -228,7 +236,7 @@
   <div id="scene">
     <div id="stars"></div>
     <div id="sunGlow"></div>
-    <div id="celestial">☀️</div>
+    <div id="celestial">🌍</div>
     <div id="hills">
       <svg class="far" viewBox="0 0 1440 320" preserveAspectRatio="none"><path d="M0,210 C220,150 380,250 620,200 C880,150 1080,250 1440,190 L1440,320 L0,320 Z"/></svg>
       <svg class="mid" viewBox="0 0 1440 320" preserveAspectRatio="none"><path d="M0,250 C260,200 460,290 760,240 C1020,200 1240,280 1440,240 L1440,320 L0,320 Z"/></svg>
@@ -238,37 +246,37 @@
     <div id="decorLayer"></div>
     <div id="ambient"></div>
     <div id="field"></div>
-    <div id="gardener"><span class="body">🧑‍🌾</span></div>
+    <div id="gardener"><span class="body">🧑‍🚀</span></div>
     <div id="weatherLayer"></div>
     <div id="flash"></div>
-    <div id="shooter">🌠</div>
-    <div id="cat">🐈</div>
+    <div id="shooter">☄️</div>
+    <div id="cat">🛸</div>
     <div id="seasonTint"></div>
     <div id="fertGlow"></div>
   </div>
 
   <div id="topbar">
     <div class="stat">🪙 <b id="coins">0</b></div>
-    <div class="stat">💩 ปุ๋ย <b id="fert">0</b></div>
+    <div class="stat">🧪 สารอาหาร <b id="fert">0</b></div>
     <div class="stat prestige-lv" title="ระดับบารมี — โบนัสผลผลิตถาวร (ได้จากรีเบิร์ธ)">⭐ Lv <b id="prestigeLv">0</b> <small style="color:#9fb4a3">(+<span id="spiritBonus">0</span>%)</small></div>
     <div class="stat spirit" title="Spirit — สกุลเงินไว้แลกของตกแต่ง">✨ <b id="spirit">0</b></div>
     <div id="spacer"></div>
-    <button class="btn" id="boostBtn" title="โปรยปุ๋ยเร่งโตทั้งฟาร์ม (กด B)">🌱 โปรยปุ๋ย</button>
+    <button class="btn" id="boostBtn" title="โปรยสารอาหารเร่งโตทั้งสถานี (กด B)">🌱 โปรยสารอาหาร</button>
     <div id="menuWrap">
       <button class="btn" id="menuBtn">☰ เมนู</button>
       <div id="menuDrop">
-        <div class="stat" id="seasonStat">🌸 ใบไม้ผลิ</div>
+        <div class="stat" id="seasonStat">🌑 จันทร์ดับ</div>
         <div class="stat" id="weatherStat">☀️</div>
-        <div class="stat" id="timeStat">🌅 เช้า</div>
+        <div class="stat" id="timeStat">🌄 รุ่งสางจันทรา</div>
         <div class="menusep"></div>
-        <button class="btn" id="travelBtn" onclick="location.href='moon.html'" style="border-color:#7ad1ff;color:#7ad1ff;">🚀 เดินทางไปดวงจันทร์</button>
+        <button class="btn" id="travelBtn" onclick="location.href='index.html'" style="border-color:#7ed957;color:#7ed957;">🌍 เดินทางกลับโลก (ฟาร์ม)</button>
         <div class="menusep"></div>
         <button class="btn" id="autoBtn">🤖 ปลูกอัตโนมัติ: เปิด</button>
         <div class="menusep"></div>
         <button class="btn" id="shopBtn">⬆️ อัปเกรด</button>
-        <button class="btn" id="fertShopBtn">🏪 ร้านปุ๋ย</button>
-        <button class="btn" id="masteryBtn">🌟 ความเชี่ยวชาญผัก</button>
-        <button class="btn" id="decorBtn">🏯 ของตกแต่ง</button>
+        <button class="btn" id="fertShopBtn">🏪 ร้านสารอาหาร</button>
+        <button class="btn" id="masteryBtn">🌟 ความเชี่ยวชาญพืช</button>
+        <button class="btn" id="decorBtn">🛰️ ของตกแต่งสถานี</button>
         <button class="btn" id="questBtn">📜 เควส</button>
         <button class="btn prestige" id="prestigeBtn">🔄 รีเบิร์ธ</button>
         <button class="btn" id="settingBtn">⚙️ ตั้งค่า</button>
@@ -289,21 +297,21 @@
   <!-- Fertilizer shop -->
   <div class="modal" id="fertShopModal"><div class="card">
     <span class="close" data-close="fertShopModal">✕</span>
-    <h2>🏪 ร้านปุ๋ย</h2><div class="sub">อัปเกรดถาวร ซื้อด้วย <b>💩 ปุ๋ย</b> เท่านั้น — เก็บผัก & แมวจรเพื่อสะสมปุ๋ย</div>
+    <h2>🏪 ร้านสารอาหาร</h2><div class="sub">อัปเกรดถาวร ซื้อด้วย <b>🧪 สารอาหาร</b> เท่านั้น — เก็บพืช & จานบินเพื่อสะสมสารอาหาร</div>
     <div id="fertShopList"></div>
   </div></div>
 
   <!-- Mastery -->
   <div class="modal" id="masteryModal"><div class="card">
     <span class="close" data-close="masteryModal">✕</span>
-    <h2>🌟 ความเชี่ยวชาญผัก</h2><div class="sub">เก็บเกี่ยวสะสม → โบนัสผลผลิตถาวรของผักชนิดนั้น</div>
+    <h2>🌟 ความเชี่ยวชาญพืช</h2><div class="sub">เก็บเกี่ยวสะสม → โบนัสผลผลิตถาวรของพืชชนิดนั้น</div>
     <div id="masteryList"></div>
   </div></div>
 
   <!-- Decorations -->
   <div class="modal" id="decorModal"><div class="card">
     <span class="close" data-close="decorModal">✕</span>
-    <h2>🏯 ของตกแต่งฟาร์ม</h2><div class="sub">ซื้อด้วย <b style="color:#b388ff">✨ Spirit ที่ใช้ได้</b> — โผล่บนฟาร์ม & ให้โบนัสถาวร (ใช้แต้มแล้วโบนัสพาสซีฟไม่ลด)</div>
+    <h2>🛰️ ของตกแต่งสถานี</h2><div class="sub">ซื้อด้วย <b style="color:#b388ff">✨ Spirit ที่ใช้ได้</b> — โผล่บนสถานี & ให้โบนัสถาวร (ใช้แต้มแล้วโบนัสพาสซีฟไม่ลด)</div>
     <div id="decorList"></div>
   </div></div>
 
@@ -317,7 +325,7 @@
   <!-- Prestige -->
   <div class="modal" id="prestigeModal"><div class="card">
     <span class="close" data-close="prestigeModal">✕</span>
-    <h2>🔄 รีเบิร์ธฟาร์ม</h2>
+    <h2>🔄 รีเบิร์ธสถานี</h2>
     <div class="sub">รีเซ็ตเหรียญ/แปลง/อัปเกรด → ได้ <b style="color:#ffd34d">⭐ บารมี</b> (โบนัสถาวร) + <b style="color:#b388ff">✨ Spirit</b> (ไว้แลกของตกแต่ง)</div>
     <div id="prestigeInfo"></div>
     <button class="btn prestige" id="doPrestige" style="width:100%;margin-top:12px;padding:12px;font-size:16px;">รีเบิร์ธเลย</button>
@@ -329,21 +337,21 @@
     <span class="close" data-close="settingModal">✕</span>
     <h2>⚙️ ตั้งค่า</h2><div class="sub">ปรับตำแหน่ง/ขนาดให้เหมาะกับการใช้เป็น wallpaper</div>
 
-    <div class="row"><div class="l"><b>📍 ตำแหน่งฟาร์ม</b><small>วางฟาร์มไว้ด้านไหนของจอ</small></div>
+    <div class="row"><div class="l"><b>📍 ตำแหน่งสถานี</b><small>วางสถานีไว้ด้านไหนของจอ</small></div>
       <div id="posBtns" style="display:flex;gap:6px;">
         <button class="btn" data-pos="left">⬅️ ซ้าย</button>
         <button class="btn" data-pos="center">⬛ กลาง</button>
         <button class="btn" data-pos="right">➡️ ขวา</button>
       </div></div>
 
-    <div class="row"><div class="l"><b>🔍 ขนาดฟาร์ม</b><small>ย่อ/ขยายแปลงปลูก</small></div>
+    <div class="row"><div class="l"><b>🔍 ขนาดสถานี</b><small>ย่อ/ขยายแปลงปลูก</small></div>
       <div id="scaleBtns" style="display:flex;gap:6px;">
         <button class="btn" data-scale="0.75">เล็ก</button>
         <button class="btn" data-scale="1">ปกติ</button>
         <button class="btn" data-scale="1.3">ใหญ่</button>
       </div></div>
 
-    <div class="row"><div class="l"><b>📏 ระยะห่างขอบล่าง</b><small>ดันฟาร์มขึ้น/ลง</small></div>
+    <div class="row"><div class="l"><b>📏 ระยะห่างขอบล่าง</b><small>ดันสถานีขึ้น/ลง</small></div>
       <input type="range" id="bottomRange" min="2" max="30" step="1" style="width:160px;">
     </div>
 
@@ -387,7 +395,7 @@
   </div></div>
 
   <!-- โหลด config ของ map นี้ก่อน แล้วค่อยโหลด engine กลาง -->
-  <script src="farm.config.js"></script>
+  <script src="moon.config.js"></script>
   <script src="engine.js"></script>
 </body>
 </html>

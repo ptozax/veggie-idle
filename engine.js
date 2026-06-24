@@ -1,193 +1,11 @@
 /* ===================================================================
-   🌱 ฟาร์มไม่มีวันหยุด — Idle Farm Wallpaper (V1)
-   เซฟ localStorage · offline progress · weather · day/night · prestige
+   🌱 ENGINE — เครื่องยนต์เกม (ใช้ร่วมทุก map)
    -------------------------------------------------------------------
-   ★ ปรับแต่งเกือบทุกอย่างได้ที่ CONFIG ด้านล่าง — แก้ตัวเลขแล้วรีโหลด
+   ★ ไฟล์นี้ไม่มี CONFIG ของตัวเอง — ต้องโหลด *.config.js ก่อนไฟล์นี้
+     (config นิยาม const CONFIG พร้อม CONFIG.theme)
+   ★ ธีมภาพ (ฟ้า/พื้น/ดาว/อิโมจิ/สเตจการโต) อ่านจาก CONFIG.theme ทั้งหมด
    =================================================================== */
 'use strict';
-
-// ===================================================================
-//  ⚙️  CONFIG — ศูนย์รวมค่าปรับแต่งทั้งเกม (แก้ตรงนี้ที่เดียว)
-// ===================================================================
-const CONFIG = {
-  saveKey: 'idleFarm_v1',          // ชื่อช่องเซฟใน localStorage
-
-  // ----- เริ่มต้น -----
-  startCoins: 30,
-  startFert: 0,
-  startSelected: 'carrot',
-  startAuto: true,
-
-  // ----- แปลงปลูก -----
-  plotBase: 6,                     // จำนวนแปลงเริ่มต้น
-  plotMax: 24,                     // จำนวนแปลงสูงสุด
-  plotCostBase: 150,               // ราคาฐานของการซื้อแปลง
-  plotCostMult: 3.2,               // ตัวคูณราคาแปลงต่อแปลง (ยิ่งมากยิ่งแพงไว)
-  // จำนวนคอลัมน์ของกริดตามจำนวนแปลง (ใช้ค่าแรกที่ plotCount <= upTo)
-  gridCols: [{upTo: 8, cols: 4}, {upTo: 15, cols: 5}, {upTo: Infinity, cols: 6}],
-
-  // ----- เวลา/รอบเกม -----
-  dayLength: 360,                  // วินาทีต่อ 1 วันในเกม (รอบกลางวัน-กลางคืน)
-  tickMs: 100,                     // เดินเกมทุกกี่มิลลิวินาที (100 = 10 ครั้ง/วิ)
-  saveInterval: 5000,              // auto-save ทุกกี่มิลลิวินาที
-
-  // ----- Offline progress -----
-  offlineMinSeconds: 30,           // หายไปอย่างน้อยกี่วิถึงคิด offline
-  offlineCapHours: 8,              // คิด offline สูงสุดกี่ชั่วโมง
-
-  // ----- ผักทองคำ -----
-  goldenBaseChance: 0.04,          // โอกาสพื้นฐานได้ผักทอง
-  goldenMult: 5,                   // ผักทองขายได้กี่เท่า
-
-  // ----- 🌈 ผักกลายพันธุ์ (Mutant) — หายากกว่าผักทอง จ่ายหนักกว่า -----
-  mutantBaseChance: 0.004,         // โอกาสพื้นฐานได้ผักกลายพันธุ์ (ตอนปลูก)
-  mutantMult: 30,                  // ผักกลายพันธุ์ขายได้กี่เท่า (ทับผักทอง)
-  mutantBoostAdd: 0.02,            // +โอกาสกลายพันธุ์ระหว่างโปรยปุ๋ย
-
-  // ----- Prestige / Spirit -----
-  prestigeDivisor: 1e6,            // spirit = √(เหรียญสะสม ÷ ค่านี้)
-  spiritBonusPer: 0.05,            // โบนัสมูลค่าขาย +x ต่อ 1 spirit
-  spiritGrowPer: 0.02,             // โบนัสความเร็วโต +x ต่อ 1 spirit
-
-  // ----- Mastery (ความเชี่ยวชาญผัก) -----
-  masteryPerLevel: 50,             // เก็บกี่ต้นต่อ 1 เลเวล mastery
-  masteryYieldPer: 0.10,           // ผลผลิต +x ต่อเลเวล mastery
-  masteryGrowEvery: 100,           // เก็บกี่ต้นถึงได้โบนัสความเร็วโต
-  masteryGrowPer: 0.05,            // ความเร็วโต +x ต่อขั้น
-  masteryGrowMax: 0.50,            // โบนัสความเร็วโตจาก mastery สูงสุด
-
-  // ----- ตลาด (ราคาผันผวน) -----
-  marketMin: 0.7,                  // ตัวคูณราคาต่ำสุด
-  marketRange: 0.9,                // ช่วงสุ่มเพิ่ม (สูงสุด = min + range)
-  marketIntervalMin: 60,           // เปลี่ยนราคาทุกอย่างน้อยกี่วิ
-  marketIntervalRange: 120,        // บวกสุ่มได้อีกกี่วิ
-
-  // ----- สภาพอากาศ -----
-  // pool = โอกาสออกของแต่ละแบบ (ใส่ซ้ำ = โอกาสมากขึ้น)
-  weatherPool: ['sun', 'sun', 'sun', 'cloud', 'cloud', 'rain', 'rain', 'storm'],
-  weatherFirstMin: 30,             // อากาศแรกอยู่กี่วิ (สุ่ม min..min+range)
-  weatherFirstRange: 40,
-
-  // ----- คนสวน -----
-  gardenerSpeedBase: 32,           // ความเร็วเดินฐาน (% ต่อวินาที โดยประมาณ)
-  gardenerWorkMs: 450,             // เวลายืนก้มทำงานที่แปลง (ms, หารด้วย speed)
-
-  // ----- 🌦️ ฤดูกาล — วงรอบยาวกว่าอากาศรายวัน ปรับความเร็วโต & ราคาขายทั้งฟาร์ม -----
-  seasonLength: 300,               // วินาทีต่อ 1 ฤดู (เวลาจริง)
-  // grow=ตัวคูณความเร็วโต, sell=ตัวคูณราคาขาย, tint=สีคลุมฉากบางๆ
-  seasons: [
-    {id: 'spring', em: '🌸', nm: 'ใบไม้ผลิ', grow: 1.25, sell: 1.00, tint: 'rgba(120,220,120,.10)', desc: 'พืชโตไว ราคาปกติ'},
-    {id: 'summer', em: '☀️', nm: 'ฤดูร้อน',  grow: 0.85, sell: 1.30, tint: 'rgba(255,200,90,.12)',  desc: 'ขายแพง แต่โตช้า'},
-    {id: 'rainy',  em: '🌧️', nm: 'ฤดูฝน',    grow: 1.45, sell: 0.90, tint: 'rgba(90,150,220,.12)',  desc: 'โตไวสุด แต่ราคาตก'},
-    {id: 'autumn', em: '🍂', nm: 'ใบไม้ร่วง', grow: 1.00, sell: 1.18, tint: 'rgba(210,130,60,.12)',  desc: 'สมดุล ราคาดีนิดหน่อย'},
-  ],
-
-  // ----- Easter eggs -----
-  shootingStarReward: 100,         // ดาวตก คลิกได้กี่เหรียญ
-  shootingStarChance: 0.5,         // โอกาสเกิดดาวตก (ตอนกลางคืน)
-  catFertReward: 2,                // แมวจรให้ปุ๋ยกี่หน่วย
-  catChance: 0.4,                  // โอกาสแมวเดินผ่าน
-
-  // ----- 🐛 ศัตรูพืช — โผล่บนแปลงที่กำลังโต ถ้าไม่คลิกไล่ทันจะกัดผัก -----
-  pest: {
-    checkMs: 26000,                // เช็คทุกกี่ ms ว่าจะมีศัตรูพืชโผล่ไหม
-    chance: 0.5,                   // โอกาสโผล่ในแต่ละครั้งที่เช็ค
-    lifetime: 8000,                // มีเวลากี่ ms ก่อนมันกัดผัก
-    reward: 0.25,                  // ไล่ทันได้เหรียญ = ราคาขายผัก × ค่านี้
-    destroys: false,               // true=ทำลายต้นทิ้ง, false=รีเซ็ตความโต (ให้อภัยกว่า)
-  },
-
-  // ----- เควส -----
-  questNeedMin: 10,                // ต้องส่งอย่างน้อยกี่ต้น
-  questNeedStep: 10,               // ขั้นการสุ่ม (10,20,30,40,50)
-  questNeedSteps: 5,
-  questRewardRate: 0.6,            // รางวัล = sell × need × rate + flat
-  questRewardFlat: 50,
-
-  // ----- ค่าตั้งค่าเริ่มต้นของ wallpaper -----
-  defaultFieldPos: 'center',       // left | center | right
-  defaultFieldScale: 1,            // 0.75 | 1 | 1.3
-  defaultFieldBottom: 5,           // % ระยะห่างขอบล่าง
-  defaultGroundH: 32,              // % ความสูงพื้นดิน
-  defaultSeedPos: 'center',        // ตำแหน่งแถบเลือกผัก: left | center | right
-  defaultSeedScale: 1,             // ขนาดแถบเลือกผัก: 0.75 | 1 | 1.3
-  defaultSeedBottom: 0,            // % ความสูงแถบเลือกผัก (ดันขึ้นจากขอบล่าง)
-
-  // ----- ฉาก/ภาพ (โหมดเบา) — ลดของที่กิน GPU ตลอดเวลา -----
-  scene: {
-    starCount: 28,         // จำนวนดาว (เดิม 70)
-    starTwinkle: false,    // ดาวกะพริบไหม (false = นิ่ง ประหยัดสุด)
-    treeCount: 6,          // ต้นไม้ประดับเนินเขา (เดิม 11)
-    rainCount: 16,         // เม็ดฝนตอนฝนตก (เดิม 35)
-    stormRainCount: 26,    // เม็ดฝนตอนพายุ (เดิม 50)
-    cloudCount: 2,         // เมฆตอนมีเมฆ (เดิม 3)
-    stormCloudCount: 3,    // เมฆตอนพายุ (เดิม 5)
-    lightning: true,       // ฟ้าแลบตอนพายุ (เกิดเป็นครั้งคราว ไม่หนัก)
-    glow: true,            // แสงเรืองรอบดวงอาทิตย์/จันทร์
-    ambient: true,         // โทนแสงคลุมฉากตามเวลา
-  },
-
-  // ----- ข้อมูลผัก (tier) -----
-  // cost=ค่าเมล็ด, grow=วินาทีที่โต, sell=ราคาขายฐาน, unlock=เหรียญสะสมที่ปลดล็อก
-  crops: [
-    {id: 'carrot', em: '🥕', nm: 'แครอท',     cost: 10,     grow: 8,    sell: 18,      unlock: 0},
-    {id: 'tomato', em: '🍅', nm: 'มะเขือเทศ', cost: 60,     grow: 18,   sell: 95,      unlock: 200},
-    {id: 'corn',   em: '🌽', nm: 'ข้าวโพด',   cost: 300,    grow: 40,   sell: 480,     unlock: 1500},
-    {id: 'egg',    em: '🍆', nm: 'มะเขือ',     cost: 1500,   grow: 85,   sell: 2600,    unlock: 9000},
-    {id: 'straw',  em: '🍓', nm: 'สตรอว์',     cost: 8000,   grow: 170,  sell: 14500,   unlock: 55000},
-    {id: 'pine',   em: '🍍', nm: 'สับปะรด',   cost: 45000,  grow: 340,  sell: 86000,   unlock: 320000},
-    {id: 'melon',  em: '🍈', nm: 'เมล่อน',     cost: 250000, grow: 600,  sell: 520000,  unlock: 1.8e6},
-    {id: 'flower', em: '🌸', nm: 'ดอกไม้',     cost: 1.4e6,  grow: 1100, sell: 3.2e6,   unlock: 1.1e7},
-    {id: 'starf',  em: '🌟', nm: 'ผลไม้ดารา', cost: 8e6,    grow: 2200, sell: 2e7,     unlock: 7e7},
-  ],
-
-  // ----- อัปเกรด (endless, exponential) -----
-  // base=ราคาเริ่ม, mult=คูณราคาต่อเลเวล, eff=ผล ณ เลเวล l
-  upgrades: [
-    {id: 'speed',  nm: '💧 ระบบรดน้ำ',   desc: 'ผักโตเร็วขึ้น',          base: 80,   mult: 1.55, eff: l => 1 + l * 0.08},
-    {id: 'value',  nm: '💰 ตลาดพรีเมียม', desc: 'ขายผักได้แพงขึ้น',       base: 120,  mult: 1.6,  eff: l => 1 + l * 0.10},
-    {id: 'garden', nm: '🏃 คนสวนคล่อง',  desc: 'คนสวนทำงานเร็วขึ้น',     base: 200,  mult: 1.7,  eff: l => 1 + l * 0.15},
-    {id: 'fert',   nm: '💩 บ่อปุ๋ย',      desc: 'มีโอกาสได้ปุ๋ยตอนเก็บ', base: 500,  mult: 1.8,  eff: l => l * 0.02},
-    {id: 'gold',   nm: '🍀 เมล็ดนำโชค',  desc: 'เพิ่มโอกาสผักทองคำ',     base: 1000, mult: 2.0,  eff: l => l * 0.015},
-  ],
-
-  // ----- 🌱 โปรยปุ๋ย (Active Boost) — กดใช้ปุ๋ยเพื่อเร่งโตทั้งฟาร์มชั่วคราว -----
-  fertBoost: {
-    cost: 8,            // ใช้ปุ๋ยกี่หน่วยต่อการโปรย 1 ครั้ง
-    duration: 75,       // โบนัสอยู่กี่วินาที (ฐาน — ต่อได้ด้วย ⏱️ ปุ๋ยอึด)
-    growMult: 2.5,      // ตัวคูณความเร็วโตระหว่างเปิด
-    goldenAdd: 0.20,    // +โอกาสผักทองระหว่างเปิด
-  },
-
-  // ----- 🏪 ร้านปุ๋ย — อัปเกรดถาวร ซื้อด้วย "ปุ๋ย" เท่านั้น (เงินซื้อไม่ได้) -----
-  // base=ปุ๋ยที่ใช้เลเวลแรก, mult=คูณราคาต่อเลเวล, eff=ผล ณ เลเวล l, max=เลเวลสูงสุด
-  fertShop: [
-    {id: 'richSoil',    nm: '🌾 ดินอุดม',    desc: 'ผลผลิตทุกผัก +6%/lv ถาวร',      base: 12, mult: 1.55, max: 25, eff: l => 1 + l * 0.06},
-    {id: 'compostKing', nm: '💩 ราชาปุ๋ย',   desc: 'โอกาสได้ปุ๋ยตอนเก็บ +3%/lv',    base: 15, mult: 1.5,  max: 20, eff: l => l * 0.03},
-    {id: 'fertGold',    nm: '✨ ปุ๋ยทองคำ',  desc: 'โอกาสได้ผักทองคำ +1.2%/lv',     base: 20, mult: 1.6,  max: 20, eff: l => l * 0.012},
-    {id: 'longBoost',   nm: '⏱️ ปุ๋ยอึด',    desc: 'โปรยปุ๋ยออกฤทธิ์นานขึ้น +12 วิ/lv', base: 18, mult: 1.5,  max: 12, eff: l => l * 12},
-  ],
-
-  // ----- 🏯 ของตกแต่งฟาร์ม — ซื้อด้วย "✨ Spirit ที่ใช้ได้" (ใช้แต้มสะสม ไม่ลดโบนัสพาสซีฟ) -----
-  // โผล่บนฉากเป็นชิ้น ๆ + ให้โบนัสถาวร · type=ผลที่ให้, per=โบนัสต่อเลเวล, pos=ตำแหน่งซ้าย% บนฉาก, size=ขนาด px (ไม่ใส่ = 40)
-  // type: sell=ราคาขาย ·grow=ความเร็วโต ·golden=โอกาสผักทอง ·fert=โอกาสปุ๋ย ·mutant=โอกาสกลายพันธุ์
-  decorations: [
-    {id: 'lantern',  em: '🏮', nm: 'โคมไฟมงคล',       desc: 'ขายผักได้แพงขึ้น',        type: 'sell',   per: 0.05,  base: 1, mult: 1.6, max: 12, pos: 12, size: 50},
-    {id: 'fountain', em: '⛲', nm: 'น้ำพุศักดิ์สิทธิ์', desc: 'ผักโตเร็วขึ้น',           type: 'grow',   per: 0.04,  base: 2, mult: 1.6, max: 12, pos: 22, size: 50},
-    {id: 'gnome',    em: '🍄', nm: 'บ้านเห็ดปุ๋ย',      desc: 'เพิ่มโอกาสได้ปุ๋ยตอนเก็บ', type: 'fert',   per: 0.02,  base: 2, mult: 1.6, max: 10, pos: 30, size: 50},
-    {id: 'topiary',  em: '🌳', nm: 'ต้นไม้นำโชค',       desc: 'เพิ่มโอกาสผักทองคำ',      type: 'golden', per: 0.012, base: 3, mult: 1.7, max: 10, pos: 72, size: 50},
-    {id: 'crystal',  em: '🔮', nm: 'ลูกแก้วพิศวง',      desc: 'เพิ่มโอกาสผักกลายพันธุ์',  type: 'mutant', per: 0.004, base: 5, mult: 1.9, max: 8,  pos: 80, size: 50},
-    {id: 'statue',   em: '🗿', nm: 'รูปปั้นโบราณ',      desc: 'ขายผักได้แพงขึ้น (มาก)',  type: 'sell',   per: 0.08,  base: 6, mult: 1.8, max: 10, pos: 88, size: 150},
-  ],
-
-  // ----- สภาพอากาศ: grow=ตัวคูณความเร็วโต, next=[min,max] วินาทีที่อยู่ -----
-  weathers: {
-    sun:   {em: '☀️', nm: 'แดด',  grow: 1.0,  next: [40, 80]},
-    cloud: {em: '⛅', nm: 'เมฆ',  grow: 0.7,  next: [40, 70]},
-    rain:  {em: '🌧️', nm: 'ฝน',   grow: 1.4,  next: [35, 70]},
-    storm: {em: '⛈️', nm: 'พายุ', grow: 0.55, next: [30, 55]},
-  },
-};
 
 // ----- ทางลัดอ้างถึง CONFIG (ของเดิมหลายจุดใช้ชื่อสั้น) -----
 const CROPS = CONFIG.crops;
@@ -200,6 +18,12 @@ const PLOT_BASE = CONFIG.plotBase;
 const PLOT_MAX = CONFIG.plotMax;
 const DAY_LEN = CONFIG.dayLength;
 const plotCost = n => Math.floor(CONFIG.plotCostBase * Math.pow(CONFIG.plotCostMult, n - PLOT_BASE - 1));
+
+// ----- ป้ายข้อความที่ปรับตามธีม (farm: ปุ๋ย/💩 · moon: สารอาหาร/🧪) — มี fallback เป็นฟาร์ม -----
+const FERT_ICON  = (CONFIG.theme && CONFIG.theme.fertIcon)  || '💩';
+const FERT_NAME  = (CONFIG.theme && CONFIG.theme.fertName)  || 'ปุ๋ย';
+const BOOST_NAME = (CONFIG.theme && CONFIG.theme.boostName) || 'โปรยปุ๋ย';
+const CAT_LABEL  = (CONFIG.theme && CONFIG.theme.catLabel)  || '🐈 แมวจร';
 
 // ---------- สถานะเกม ----------
 let S = null;
@@ -590,7 +414,8 @@ function renderPlot(i){
   const pct = Math.round(prog*100);
   if(el._st==='grow' && el._pct===pct) return;
   el._st='grow'; el._pct=pct;
-  cs.textContent = prog<0.33?'🌱':prog<0.7?'🌿':c.em;
+  const gs = CONFIG.theme.growStages;   // [เมล็ด, ต้นอ่อน] ก่อนโตเต็มเป็น c.em
+  cs.textContent = prog<0.33?gs[0]:prog<0.7?gs[1]:c.em;
   cs.style.transform = `scale(${(0.6+prog*0.4).toFixed(2)})`;
   bar.style.width = pct+'%';
   el.classList.toggle('ready', prog>=1);
@@ -714,27 +539,12 @@ function marketTick(dt){
 // =================================================================
 //  SCENE: ท้องฟ้า/ดวงอาทิตย์/ดวงจันทร์/ดาว/อากาศ
 // =================================================================
-const SKY = {
-  morning:['#fce3b0','#ffc89e','#9fd3e0','#d2ebcb'],
-  day:    ['#54aef2','#8ad0ff','#c8ecff','#e0f3d8'],
-  evening:['#33264f','#b5487a','#ff8a5b','#ffd9a0'],
-  night:  ['#04061a','#0b1640','#142a55','#1d3140'],
-};
-// alpha ปรับลงเล็กน้อยให้เข้ากับ normal-blend (เดิมจูนไว้สำหรับ mix-blend multiply)
-const AMBIENT = {
-  morning:'rgba(255,224,188,0.30)',
-  day:    'rgba(255,255,255,0)',
-  evening:'rgba(255,138,82,0.40)',
-  night:  'rgba(28,40,86,0.60)',
-};
-const GLOW = {
-  morning:['rgba(255,236,180,.85)',0.9],
-  day:    ['rgba(255,240,190,.9)',1],
-  evening:['rgba(255,150,90,.85)',0.85],
-  night:  ['rgba(190,210,255,.7)',0.45],
-};
+// ----- ธีมภาพทั้งหมดมาจาก CONFIG.theme (กำหนดต่อ map ในไฟล์ *.config.js) -----
+const SKY = CONFIG.theme.sky;
+const AMBIENT = CONFIG.theme.ambient;
+const GLOW = CONFIG.theme.glow;
 let glowEl, ambientEl, _lastPhase=null, _lastLx=null, _lastLy=null;
-const PHASE_LABELS={morning:'🌅 เช้า',day:'🌞 กลางวัน',evening:'🌇 เย็น',night:'🌙 กลางคืน'};
+const PHASE_LABELS = CONFIG.theme.phaseLabels;
 function updateScene(){
   const ph = dayPhase();
 
@@ -742,9 +552,10 @@ function updateScene(){
     const c = SKY[ph]||SKY.day;
     sceneEl.style.background = `linear-gradient(${c[0]} 0%, ${c[1]} 38%, ${c[2]} 70%, ${c[3]} 100%)`;
     if(ambientEl) ambientEl.style.background = AMBIENT[ph];
-    celestialEl.textContent = ph==='night'?'🌙':'☀️';
-    starsEl.style.opacity = ph==='night'?1:(ph==='evening'?0.35:0);
-    starsEl.classList.toggle('off', ph!=='night' && ph!=='evening');
+    celestialEl.textContent = ph==='night'?CONFIG.theme.celestialNight:CONFIG.theme.celestialDay;
+    const sa = CONFIG.theme.starsAlways;   // moon: ดาวเห็นตลอด (อวกาศ) · farm: เฉพาะเย็น/กลางคืน
+    starsEl.style.opacity = sa?1:(ph==='night'?1:(ph==='evening'?0.35:0));
+    starsEl.classList.toggle('off', !sa && ph!=='night' && ph!=='evening');
     timeEl.textContent = PHASE_LABELS[ph];
     if(glowEl){
       const g = GLOW[ph]||GLOW.day;
@@ -785,7 +596,7 @@ function buildStars(){
   }
   starsEl.innerHTML=h;
 
-  const trees=['🌲','🌳','🌴','🌲','🌳',];
+  const trees = CONFIG.theme.hillProps;   // ของประดับบนเนิน (farm: ต้นไม้ · moon: ก้อนหิน/หลุม)
   let th='';
   for(let i=0;i<sc.treeCount;i++){
     const l=3+Math.random()*94, s=40+Math.random()*30, b=12;
@@ -810,7 +621,7 @@ function renderWeather(){
     const n=weather==='storm'?sc.stormCloudCount:sc.cloudCount;
     for(let i=0;i<n;i++){
       const cl=document.createElement('div');
-      cl.className='cloud'; cl.textContent='☁️';
+      cl.className='cloud'; cl.textContent=CONFIG.theme.cloud ?? '☁️';  // '' = ไม่ใช้อิโมจิ (ใช้พื้นหลัง CSS แทน)
       cl.style.top=(5+Math.random()*30)+'%';
       cl.style.animationDuration=(90+Math.random()*90)+'s';
       cl.style.animationDelay=(-Math.random()*30)+'s';
@@ -867,8 +678,8 @@ function maybeCat(){
     cat.style.left='105%';
   });
   cat.onclick=()=>{
-    S.fert+=CONFIG.catFertReward; updateHUD(); floatText(cat,'💩+'+CONFIG.catFertReward,'#caa');
-    toast('🐈 แมวจรให้ปุ๋ย +'+CONFIG.catFertReward+'!'); cat.style.display='none'; cat.onclick=null;
+    S.fert+=CONFIG.catFertReward; updateHUD(); floatText(cat,FERT_ICON+'+'+CONFIG.catFertReward,'#caa');
+    toast(CAT_LABEL+'ให้'+FERT_NAME+' +'+CONFIG.catFertReward+'!'); cat.style.display='none'; cat.onclick=null;
   };
   setTimeout(()=>{ cat.style.display='none'; cat.onclick=null; }, 6200);
 }
@@ -891,7 +702,8 @@ function maybePest(){
   pestIdx = i; pestRef = S.plots[i];
   pestEl = document.createElement('div');
   pestEl.className = 'pest';
-  pestEl.textContent = Math.random()<0.5 ? '🐛' : '🐌';
+  const pp = CONFIG.theme.pests || ['🐛','🐌'];
+  pestEl.textContent = pp[Math.floor(Math.random()*pp.length)];
   pestEl.onclick = e => { e.stopPropagation(); resolvePest(true); };
   plot.appendChild(pestEl);
   pestTimer = setTimeout(()=>resolvePest(false), CONFIG.pest.lifetime);
@@ -967,11 +779,11 @@ function floatText(el,txt,color){
 function activateBoost(){
   if(fertBoostActive()){ toast('🌱 กำลังเร่งโตอยู่แล้ว!'); return; }
   const cost = CONFIG.fertBoost.cost;
-  if(S.fert < cost){ toast('💩 ปุ๋ยไม่พอ — ต้องมี '+cost); return; }
+  if(S.fert < cost){ toast(FERT_ICON+' '+FERT_NAME+'ไม่พอ — ต้องมี '+cost); return; }
   S.fert -= cost;
   const dur = fertBoostDuration();
   S.boostEnds = Date.now() + dur*1000;
-  toast(`🌱 โปรยปุ๋ย! เร่งโต x${CONFIG.fertBoost.growMult} นาน ${dur} วิ`);
+  toast(`🌱 ${BOOST_NAME}! เร่งโต x${CONFIG.fertBoost.growMult} นาน ${dur} วิ`);
   updateHUD(); updateBoostBtn(); save();
 }
 let _boostLbl = null, _boostGlow = null;
@@ -979,7 +791,7 @@ function updateBoostBtn(){
   const b = $('#boostBtn'); if(!b) return;
   const on = fertBoostActive();
   const lbl = on ? '🌱 เร่งโต '+fertBoostLeft()+'s'
-                 : '🌱 โปรยปุ๋ย ('+CONFIG.fertBoost.cost+'💩)';
+                 : '🌱 '+BOOST_NAME+' ('+CONFIG.fertBoost.cost+FERT_ICON+')';
   if(lbl !== _boostLbl){ b.textContent = lbl; _boostLbl = lbl; }
   if(on !== _boostGlow){
     b.classList.toggle('boosting', on);
@@ -992,16 +804,16 @@ function updateBoostBtn(){
 function fertShopEffText(u){
   const lv = fertUpLvl(u.id), e = u.eff(lv);
   if(u.id==='richSoil')    return `ผลผลิต x${e.toFixed(2)}`;
-  if(u.id==='compostKing') return `โอกาสปุ๋ย +${Math.round(e*100)}%`;
-  if(u.id==='fertGold')    return `ผักทอง +${Math.round(e*100)}%`;
-  if(u.id==='longBoost')   return `โปรยปุ๋ยนานขึ้น +${e} วิ`;
+  if(u.id==='compostKing') return `โอกาส${FERT_NAME} +${Math.round(e*100)}%`;
+  if(u.id==='fertGold')    return `ทองคำ +${Math.round(e*100)}%`;
+  if(u.id==='longBoost')   return `${BOOST_NAME}นานขึ้น +${e} วิ`;
   return '';
 }
 function renderFertShop(){
   const list = $('#fertShopList'); list.innerHTML='';
   const head = document.createElement('div');
   head.className='row'; head.style.background='rgba(126,217,87,.08)';
-  head.innerHTML = `<div class="l"><b>💩 ปุ๋ยที่มี</b><small>ได้ปุ๋ยจากการเก็บเกี่ยว & แมวจร</small></div>
+  head.innerHTML = `<div class="l"><b>${FERT_ICON} ${FERT_NAME}ที่มี</b><small>ได้${FERT_NAME}จากการเก็บเกี่ยว & ${CAT_LABEL}</small></div>
     <div style="color:var(--green);font-weight:700;font-size:17px;">${fmt(S.fert)}</div>`;
   list.appendChild(head);
   FERTSHOP.forEach(u=>{
@@ -1009,11 +821,11 @@ function renderFertShop(){
     const r = document.createElement('div'); r.className='row';
     r.innerHTML = `<div class="l"><b>${u.nm}</b> <span class="lvl">Lv.${lv}${u.max?'/'+u.max:''}</span>
       <small>${u.desc} — ตอนนี้ ${fertShopEffText(u)}</small></div>
-      <button class="btn">${maxed?'สูงสุด':'💩'+fmt(cost)}</button>`;
+      <button class="btn">${maxed?'สูงสุด':FERT_ICON+fmt(cost)}</button>`;
     const btn = r.querySelector('button');
     if(maxed){ btn.disabled = true; }
     else btn.onclick = ()=>{
-      if(S.fert < cost){ toast('💩 ปุ๋ยไม่พอ'); return; }
+      if(S.fert < cost){ toast(FERT_ICON+' '+FERT_NAME+'ไม่พอ'); return; }
       S.fert -= cost; S.fertUp[u.id] = lv+1; updateHUD(); renderFertShop(); save();
     };
     list.appendChild(r);
@@ -1025,8 +837,8 @@ function decorEffText(d){
   const e = decorLvl(d.id) * d.per;
   if(d.type==='sell')   return `ขาย +${Math.round(e*100)}%`;
   if(d.type==='grow')   return `โต +${Math.round(e*100)}%`;
-  if(d.type==='fert')   return `ปุ๋ย +${Math.round(e*100)}%`;
-  if(d.type==='golden') return `ผักทอง +${(e*100).toFixed(1)}%`;
+  if(d.type==='fert')   return `${FERT_NAME} +${Math.round(e*100)}%`;
+  if(d.type==='golden') return `ทองคำ +${(e*100).toFixed(1)}%`;
   if(d.type==='mutant') return `กลายพันธุ์ +${(e*100).toFixed(2)}%`;
   return '';
 }
@@ -1081,8 +893,8 @@ function renderShop(){
     const lv=upLvl(u.id), cost=upCost(u);
     const r=document.createElement('div'); r.className='row';
     let effTxt;
-    if(u.id==='fert') effTxt=`โอกาสปุ๋ย ${Math.round(u.eff(lv)*100)}%`;
-    else if(u.id==='gold') effTxt=`ผักทอง ${Math.round(goldenChance()*100)}%`;
+    if(u.id==='fert') effTxt=`โอกาส${FERT_NAME} ${Math.round(u.eff(lv)*100)}%`;
+    else if(u.id==='gold') effTxt=`ทองคำ ${Math.round(goldenChance()*100)}%`;
     else effTxt=`x${u.eff(lv).toFixed(2)}`;
     r.innerHTML=`<div class="l"><b>${u.nm}</b> <span class="lvl">Lv.${lv}</span>
       <small>${u.desc} — ตอนนี้ ${effTxt}</small></div>
