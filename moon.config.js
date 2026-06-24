@@ -24,7 +24,7 @@ const CONFIG = {
   gridCols: [{upTo: 8, cols: 4}, {upTo: 15, cols: 5}, {upTo: Infinity, cols: 6}],
 
   // ----- เวลา/รอบเกม -----
-  dayLength: 360,
+  dayLength: 720,                  // โลกโคจรข้ามฟ้าช้าลง (ยิ่งมากยิ่งช้า · เดิม 360)
   tickMs: 100,
   saveInterval: 5000,
 
@@ -208,6 +208,7 @@ const CONFIG = {
       night:  ['rgba(120,160,255,.6)',0.55],
     },
     phaseLabels: {morning:'🌄 รุ่งสางจันทรา', day:'☀️ กลางวันจันทรา', evening:'🌆 สนธยา', night:'🌌 ราตรีอวกาศ'},
+    celestialSize: 110,          // 🌍 โลกใหญ่กว่าปกติ (เดิม CSS 62px)
     celestialDay: '🌍',          // โลกขึ้น-ลงบนฟ้า (ขึ้นโคจรเป็นเส้นโค้งทั้งวัน)
     celestialNight: '🌍',
     starsAlways: true,           // อวกาศ — ดาวเต็มฟ้าตลอดเวลา

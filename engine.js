@@ -584,6 +584,9 @@ function buildStars(){
   glowEl = $('#sunGlow'); ambientEl = $('#ambient');
   const sc = CONFIG.scene;
 
+  // ขนาดดวง (อาทิตย์/จันทร์/โลก) — ตั้งต่อธีม (ไม่กำหนด = ใช้ค่า CSS เดิม 62px)
+  if(CONFIG.theme.celestialSize) celestialEl.style.fontSize = CONFIG.theme.celestialSize + 'px';
+
   if(!sc.glow && glowEl){ glowEl.style.display='none'; glowEl=null; }
   if(!sc.ambient && ambientEl){ ambientEl.style.display='none'; ambientEl=null; }
   if(!sc.starTwinkle) starsEl.classList.add('static');   // ดาวนิ่ง ไม่กะพริบ
