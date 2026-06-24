@@ -647,6 +647,7 @@ function startLightning(){
 //  EASTER EGGS
 // =================================================================
 function maybeShootingStar(){
+  if(document.hidden) return;              // ไม่เกิดตอนแท็บถูกบัง (โหมดเบา)
   if(dayPhase()!=='night') return;
   if(Math.random()>CONFIG.shootingStarChance) return;
   const sh=$('#shooter');
