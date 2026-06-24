@@ -168,6 +168,18 @@ const CONFIG = {
     {id: 'longBoost',   nm: '⏱️ ปุ๋ยอึด',    desc: 'โปรยปุ๋ยออกฤทธิ์นานขึ้น +12 วิ/lv', base: 18, mult: 1.5,  max: 12, eff: l => l * 12},
   ],
 
+  // ----- 🏯 ของตกแต่งฟาร์ม — ซื้อด้วย "✨ Spirit ที่ใช้ได้" (ใช้แต้มสะสม ไม่ลดโบนัสพาสซีฟ) -----
+  // โผล่บนฉากเป็นชิ้น ๆ + ให้โบนัสถาวร · type=ผลที่ให้, per=โบนัสต่อเลเวล, pos=ตำแหน่งซ้าย% บนฉาก, size=ขนาด px (ไม่ใส่ = 40)
+  // type: sell=ราคาขาย ·grow=ความเร็วโต ·golden=โอกาสผักทอง ·fert=โอกาสปุ๋ย ·mutant=โอกาสกลายพันธุ์
+  decorations: [
+    {id: 'lantern',  em: '🏮', nm: 'โคมไฟมงคล',       desc: 'ขายผักได้แพงขึ้น',        type: 'sell',   per: 0.05,  base: 1, mult: 1.6, max: 12, pos: 12, size: 50},
+    {id: 'fountain', em: '⛲', nm: 'น้ำพุศักดิ์สิทธิ์', desc: 'ผักโตเร็วขึ้น',           type: 'grow',   per: 0.04,  base: 2, mult: 1.6, max: 12, pos: 22, size: 50},
+    {id: 'gnome',    em: '🍄', nm: 'บ้านเห็ดปุ๋ย',      desc: 'เพิ่มโอกาสได้ปุ๋ยตอนเก็บ', type: 'fert',   per: 0.02,  base: 2, mult: 1.6, max: 10, pos: 30, size: 50},
+    {id: 'topiary',  em: '🌳', nm: 'ต้นไม้นำโชค',       desc: 'เพิ่มโอกาสผักทองคำ',      type: 'golden', per: 0.012, base: 3, mult: 1.7, max: 10, pos: 72, size: 50},
+    {id: 'crystal',  em: '🔮', nm: 'ลูกแก้วพิศวง',      desc: 'เพิ่มโอกาสผักกลายพันธุ์',  type: 'mutant', per: 0.004, base: 5, mult: 1.9, max: 8,  pos: 80, size: 50},
+    {id: 'statue',   em: '🗿', nm: 'รูปปั้นโบราณ',      desc: 'ขายผักได้แพงขึ้น (มาก)',  type: 'sell',   per: 0.08,  base: 6, mult: 1.8, max: 10, pos: 88, size: 150},
+  ],
+
   // ----- สภาพอากาศ: grow=ตัวคูณความเร็วโต, next=[min,max] วินาทีที่อยู่ -----
   weathers: {
     sun:   {em: '☀️', nm: 'แดด',  grow: 1.0,  next: [40, 80]},
@@ -181,6 +193,7 @@ const CONFIG = {
 const CROPS = CONFIG.crops;
 const UPGRADES = CONFIG.upgrades;
 const FERTSHOP = CONFIG.fertShop;
+const DECOR = CONFIG.decorations;
 const SEASONS = CONFIG.seasons;
 const WEATHERS = CONFIG.weathers;
 const PLOT_BASE = CONFIG.plotBase;
@@ -192,8 +205,12 @@ const plotCost = n => Math.floor(CONFIG.plotCostBase * Math.pow(CONFIG.plotCostM
 let S = null;
 function freshState(){
   return {
-    coins: CONFIG.startCoins, fert: CONFIG.startFert, spirit: 0, totalEarned: 0,
+    coins: CONFIG.startCoins, fert: CONFIG.startFert,
+    spirit: 0,                     // ✨ สกุลเงินสำหรับแลกของ (ใช้แล้วลด)
+    prestigeLv: 0,                 // ⭐ ระดับบารมี — ขับโบนัสพาสซีฟ (ขึ้นอย่างเดียว ไม่ลด)
+    totalEarned: 0,
     plotCount: PLOT_BASE,
+    decor: {},                     // ของตกแต่ง: id->level
     plots: [],                     // {crop, plantedAt, golden} | null
     selected: CONFIG.startSelected,
     auto: CONFIG.startAuto,
@@ -225,6 +242,12 @@ function load(){
     if(!raw) return false;
     const d = JSON.parse(raw);
     S = Object.assign(freshState(), d);
+    // ----- ย้ายเซฟเก่า: เดิม spirit ทำหน้าที่ทั้งโบนัส & กระเป๋า → แยกเป็น prestigeLv (โบนัส) + spirit (กระเป๋า) -----
+    if(d.prestigeLv === undefined){
+      S.prestigeLv = d.spirit || 0;                                   // โบนัส = spirit สะสมเดิม (โบนัสคงเดิมเป๊ะ)
+      S.spirit = Math.max(0, (d.spirit || 0) - (d.spiritSpent || 0)); // กระเป๋า = ที่เหลือหลังใช้ซื้อของตกแต่ง
+    }
+    delete S.spiritSpent;
     return true;
   }catch(e){ return false; }
 }
@@ -248,6 +271,17 @@ const fertBoostActive   = () => S.boostEnds && Date.now() < S.boostEnds;
 const fertBoostLeft     = () => fertBoostActive() ? Math.ceil((S.boostEnds - Date.now())/1000) : 0;
 const fertBoostDuration = () => CONFIG.fertBoost.duration + fertEff('longBoost');
 
+// ----- 🏯 ของตกแต่ง (ซื้อด้วย ✨ ที่ใช้ได้) -----
+const decorLvl   = id => (S.decor && S.decor[id]) || 0;
+const decorDef   = id => DECOR.find(d => d.id === id);
+const decorCost  = d  => Math.floor(d.base * Math.pow(d.mult, decorLvl(d.id)));
+// รวมโบนัสจากของตกแต่งทุกชิ้นที่เป็นชนิด type (sum ของ level×per)
+function decorSum(type){
+  let s = 0;
+  DECOR.forEach(d => { if(d.type === type){ const l = decorLvl(d.id); if(l > 0) s += l * d.per; } });
+  return s;
+}
+
 // ฟอร์แมตเลขย่อ 1.2K / 3.4M / 8.9B …
 function fmt(n){
   n = Math.floor(n);
@@ -259,7 +293,7 @@ function fmt(n){
 }
 
 // ---------- โบนัสรวม ----------
-const spiritBonus = () => 1 + S.spirit * CONFIG.spiritBonusPer;
+const spiritBonus = () => 1 + S.prestigeLv * CONFIG.spiritBonusPer;
 function masteryMult(cropId){
   const h = S.mastery[cropId]||0;
   return 1 + Math.floor(h/CONFIG.masteryPerLevel)*CONFIG.masteryYieldPer;
@@ -281,7 +315,8 @@ function growMult(cropId){
        * curSeason().grow
        * upEff('speed')
        * masteryGrow(cropId)
-       * (1 + S.spirit*CONFIG.spiritGrowPer)
+       * (1 + S.prestigeLv*CONFIG.spiritGrowPer)
+       * (1 + decorSum('grow'))
        * (fertBoostActive() ? CONFIG.fertBoost.growMult : 1);
 }
 
@@ -352,7 +387,7 @@ function computeOffline(){
   S.plots.forEach(p=>{
     if(!p) return;
     const c = crop(p.crop); if(!c) return;
-    const gm = WEATHERS.sun.grow * upEff('speed') * masteryGrow(c.id) * (1+S.spirit*CONFIG.spiritGrowPer);
+    const gm = WEATHERS.sun.grow * upEff('speed') * masteryGrow(c.id) * (1+S.prestigeLv*CONFIG.spiritGrowPer) * (1+decorSum('grow'));
     const realGrow = c.grow / gm;
     let elapsed = (Date.now()-p.plantedAt)/1000;
     if(elapsed >= realGrow){
@@ -389,20 +424,22 @@ let market = {};  // cropId -> ตัวคูณราคา
 function sellValue(c, golden, mutant){
   const m = market[c.id]||1;
   let v = c.sell * m * upEff('value') * masteryMult(c.id) * spiritBonus()
-        * fertEff('richSoil') * curSeason().sell;
+        * fertEff('richSoil') * curSeason().sell * (1 + decorSum('sell'));
   if(mutant) v *= CONFIG.mutantMult;       // กลายพันธุ์มาก่อน (จ่ายหนักกว่าทอง)
   else if(golden) v *= CONFIG.goldenMult;
   return v;
 }
 function goldenChance(){
   return CONFIG.goldenBaseChance + upEff('gold') + fertEff('fertGold')
+       + decorSum('golden')
        + (fertBoostActive() ? CONFIG.fertBoost.goldenAdd : 0);
 }
 function mutantChance(){
-  return CONFIG.mutantBaseChance + (fertBoostActive() ? CONFIG.mutantBoostAdd : 0);
+  return CONFIG.mutantBaseChance + decorSum('mutant')
+       + (fertBoostActive() ? CONFIG.mutantBoostAdd : 0);
 }
-// โอกาสได้ปุ๋ยตอนเก็บ = บ่อปุ๋ย (เงิน) + ราชาปุ๋ย (ปุ๋ย)
-function fertDropChance(){ return upEff('fert') + fertEff('compostKing'); }
+// โอกาสได้ปุ๋ยตอนเก็บ = บ่อปุ๋ย (เงิน) + ราชาปุ๋ย (ปุ๋ย) + บ้านเห็ดปุ๋ย (ของตกแต่ง)
+function fertDropChance(){ return upEff('fert') + fertEff('compostKing') + decorSum('fert'); }
 
 // =================================================================
 //  FIELD / PLOTS
@@ -429,6 +466,7 @@ function applyLayout(){
     fieldEl.style.transform=`translateX(-50%) scale(${sc})`;
   }
   gardenerEl.style.bottom = 'auto';
+  renderDecorScene();   // วาง/ปรับตำแหน่งของตกแต่งให้ตรงระดับพื้นดินปัจจุบัน
 
   // ----- แถบเลือกผัก (seedbar) — ปรับ ตำแหน่ง/ขนาด/ความสูง แยกจากฟาร์ม -----
   const sb = $('#seedbar');
@@ -909,6 +947,7 @@ function updateHUD(){
   $('#coins').textContent=fmt(S.coins);
   $('#fert').textContent=fmt(S.fert);
   $('#spirit').textContent=fmt(S.spirit);
+  $('#prestigeLv').textContent=fmt(S.prestigeLv);
   $('#spiritBonus').textContent=Math.round((spiritBonus()-1)*100);
 }
 
@@ -976,6 +1015,60 @@ function renderFertShop(){
     else btn.onclick = ()=>{
       if(S.fert < cost){ toast('💩 ปุ๋ยไม่พอ'); return; }
       S.fert -= cost; S.fertUp[u.id] = lv+1; updateHUD(); renderFertShop(); save();
+    };
+    list.appendChild(r);
+  });
+}
+
+// ---------- 🏯 ของตกแต่ง ----------
+function decorEffText(d){
+  const e = decorLvl(d.id) * d.per;
+  if(d.type==='sell')   return `ขาย +${Math.round(e*100)}%`;
+  if(d.type==='grow')   return `โต +${Math.round(e*100)}%`;
+  if(d.type==='fert')   return `ปุ๋ย +${Math.round(e*100)}%`;
+  if(d.type==='golden') return `ผักทอง +${(e*100).toFixed(1)}%`;
+  if(d.type==='mutant') return `กลายพันธุ์ +${(e*100).toFixed(2)}%`;
+  return '';
+}
+// แสดงของตกแต่งที่ครอบครองไว้บนฉาก (โผล่ที่ระดับพื้นดิน กระจายซ้าย-ขวา ไม่ทับแปลง)
+function renderDecorScene(){
+  let layer = $('#decorLayer');
+  if(!layer) return;
+  layer.innerHTML = '';
+  const gh = S.groundH || CONFIG.defaultGroundH;
+  DECOR.forEach(d=>{
+    if(decorLvl(d.id) < 1) return;
+    const el = document.createElement('div');
+    el.className = 'decor-item';
+    el.textContent = d.em;
+    el.style.fontSize = (d.size || 40) + 'px';   // ขนาดแยกทีละชิ้น (ไม่ใส่ใน CONFIG = 40)
+    el.style.left = d.pos + '%';
+    el.style.bottom = gh + '%';   // ตั้งนิ่งที่ขอบบนพื้นดิน — แถบหญ้าบังโคนให้เหมือนปักในหญ้า
+    layer.appendChild(el);
+  });
+}
+function renderDecorShop(){
+  const list = $('#decorList'); list.innerHTML='';
+  const head = document.createElement('div');
+  head.className='row'; head.style.background='rgba(179,136,255,.10)';
+  head.innerHTML = `<div class="l"><b>✨ Spirit</b><small>สกุลเงินสำหรับแลกของ · ได้จากรีเบิร์ธ · ⭐ บารมีไม่ลดเมื่อใช้</small></div>
+    <div style="color:#b388ff;font-weight:700;font-size:17px;">✨ ${fmt(S.spirit)}</div>`;
+  list.appendChild(head);
+  DECOR.forEach(d=>{
+    const lv = decorLvl(d.id), maxed = d.max && lv>=d.max, cost = decorCost(d);
+    const owned = lv>0;
+    const r = document.createElement('div'); r.className='row';
+    r.innerHTML = `<div class="l"><b>${d.em} ${d.nm}</b> <span class="lvl">Lv.${lv}${d.max?'/'+d.max:''}</span>
+      <small>${d.desc} — ตอนนี้ ${decorEffText(d)}${owned?'':' · ยังไม่ได้วาง'}</small></div>
+      <button class="btn">${maxed?'สูงสุด':'✨'+fmt(cost)}</button>`;
+    const btn = r.querySelector('button');
+    if(maxed){ btn.disabled = true; }
+    else btn.onclick = ()=>{
+      if(S.spirit < cost){ toast('✨ Spirit ไม่พอ — ต้องมี '+fmt(cost)); return; }
+      S.spirit -= cost;
+      S.decor[d.id] = lv+1;
+      if(lv===0) toast('🏯 วาง '+d.nm+' ลงฟาร์มแล้ว!');
+      updateHUD(); renderDecorShop(); renderDecorScene(); save();
     };
     list.appendChild(r);
   });
@@ -1064,22 +1157,29 @@ function renderQuests(){
 function spiritGain(){ return Math.floor(Math.sqrt(S.totalEarned/CONFIG.prestigeDivisor)); }
 function renderPrestige(){
   const g=spiritGain();
+  const lvAfter=S.prestigeLv+g;
   $('#prestigeInfo').innerHTML=`
     <div class="row"><div class="l"><b>เหรียญสะสมทั้งหมด</b></div><div>🪙 ${fmt(S.totalEarned)}</div></div>
-    <div class="row"><div class="l"><b>Spirit ที่จะได้รอบนี้</b></div><div style="color:#b388ff">✨ +${fmt(g)}</div></div>
-    <div class="row"><div class="l"><b>Spirit รวมหลังรีเบิร์ธ</b><small>โบนัสผลผลิต +${Math.round(CONFIG.spiritBonusPer*100)}%/spirit · โตไว +${Math.round(CONFIG.spiritGrowPer*100)}%/spirit · Mastery ติดตัว</small></div>
-      <div style="color:#b388ff">✨ ${fmt(S.spirit+g)} (+${Math.round((S.spirit+g)*CONFIG.spiritBonusPer*100)}%)</div></div>`;
+    <div class="row"><div class="l"><b>รอบนี้จะได้</b><small>เพิ่มทั้งระดับบารมี & สปิริต อย่างละ +${fmt(g)}</small></div>
+      <div style="text-align:right"><div style="color:#ffd34d">⭐ Lv +${fmt(g)}</div><div style="color:#b388ff">✨ +${fmt(g)}</div></div></div>
+    <div class="row"><div class="l"><b>⭐ บารมีหลังรีเบิร์ธ</b><small>โบนัสผลผลิต +${Math.round(CONFIG.spiritBonusPer*100)}%/Lv · โตไว +${Math.round(CONFIG.spiritGrowPer*100)}%/Lv · Mastery ติดตัว</small></div>
+      <div style="color:#ffd34d">⭐ Lv ${fmt(lvAfter)} (+${Math.round(lvAfter*CONFIG.spiritBonusPer*100)}%)</div></div>
+    <div class="row"><div class="l"><b>✨ Spirit หลังรีเบิร์ธ</b><small>สกุลเงินไว้แลกของตกแต่ง</small></div>
+      <div style="color:#b388ff">✨ ${fmt(S.spirit+g)}</div></div>`;
   $('#doPrestige').disabled = g<1;
-  $('#doPrestige').textContent = g<1 ? `ต้องสะสมถึง 🪙${fmt(CONFIG.prestigeDivisor)} ก่อน (มี ${fmt(S.totalEarned)})` : `รีเบิร์ธ → +${fmt(g)} ✨`;
+  $('#doPrestige').textContent = g<1 ? `ต้องสะสมถึง 🪙${fmt(CONFIG.prestigeDivisor)} ก่อน (มี ${fmt(S.totalEarned)})` : `รีเบิร์ธ → ⭐ Lv +${fmt(g)} · ✨ +${fmt(g)}`;
 }
 function doPrestige(){
   const g=spiritGain(); if(g<1) return;
-  const keepSpirit=S.spirit+g, keepMastery=S.mastery;
+  const keepLv=S.prestigeLv+g, keepSpirit=S.spirit+g, keepMastery=S.mastery;
+  const keepDecor=S.decor||{};
   S=freshState();
-  S.spirit=keepSpirit; S.mastery=keepMastery;
-  ensureQuest(); layoutField(); buildSeedbar(); updateHUD();
+  S.prestigeLv=keepLv;          // ⭐ บารมี (โบนัส) — สะสมขึ้นอย่างเดียว
+  S.spirit=keepSpirit;          // ✨ สปิริต (กระเป๋า) — ไว้แลกของ
+  S.mastery=keepMastery; S.decor=keepDecor;   // ของตกแต่ง & ความเชี่ยวชาญ เป็นของถาวร
+  ensureQuest(); layoutField(); buildSeedbar(); renderDecorScene(); updateHUD();
   $('#prestigeModal').classList.remove('show');
-  toast('🔄 รีเบิร์ธสำเร็จ! ✨ Spirit '+fmt(keepSpirit));
+  toast(`🔄 รีเบิร์ธสำเร็จ! ⭐ Lv ${fmt(keepLv)} · ✨ ${fmt(keepSpirit)}`);
   save();
 }
 
@@ -1091,6 +1191,7 @@ function bindUI(){
   $('#fertShopBtn').onclick=()=>{ renderFertShop(); openModal('fertShopModal'); };
   $('#shopBtn').onclick=()=>{ renderShop(); openModal('shopModal'); };
   $('#masteryBtn').onclick=()=>{ renderMastery(); openModal('masteryModal'); };
+  $('#decorBtn').onclick=()=>{ renderDecorShop(); openModal('decorModal'); };
   $('#questBtn').onclick=()=>{ renderQuests(); openModal('questModal'); };
   $('#prestigeBtn').onclick=()=>{ renderPrestige(); openModal('prestigeModal'); };
   $('#settingBtn').onclick=()=>{ refreshSettingUI(); openModal('settingModal'); };

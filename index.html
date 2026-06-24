@@ -57,6 +57,12 @@
     border-radius:100% 100% 0 0 / 100% 100% 0 0;
     box-shadow:0 4px 10px rgba(0,0,0,.2);}
 
+  /* 🏯 ของตกแต่ง — อยู่ระหว่าง layer ต้นไม้บนเนิน (#hills z1) กับ หญ้า/พื้นดิน (#ground z2)
+     z-index:1 เท่า hills แต่ DOM อยู่ทีหลัง → หน้าต้นไม้ · ground z2 พ่นทับฐาน → เหมือนปักในหญ้า · โดน ambient (z3) คลุมแสง */
+  #decorLayer{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:1;}
+  .decor-item{position:absolute;font-size:40px;transform:translateX(-50%);
+    filter:drop-shadow(0 4px 5px rgba(0,0,0,.35));}
+
   /* โทนแสงตามเวลา (กลางวัน/เย็น/กลางคืน) คลุมทั้งฉาก
      โหมดเบา: ใช้ alpha overlay ธรรมดา ไม่ใช้ mix-blend-mode (เลี่ยง recomposite ทั้งจอ) */
   #ambient{position:absolute;inset:0;pointer-events:none;z-index:3;
@@ -129,6 +135,7 @@
     padding:6px 12px;font-size:15px;font-weight:600;white-space:nowrap;}
   .stat b{color:var(--gold);}
   .stat.spirit b{color:#b388ff;}
+  .stat.prestige-lv b{color:#ffd34d;}
   #weatherStat{font-size:18px;}
   #spacer{display:none;}  /* ไม่ดันแยกซ้าย-ขวาแล้ว เพราะ topbar ชิดขวาทั้งแถบ */
   .btn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
@@ -228,6 +235,7 @@
       <svg class="near" viewBox="0 0 1440 320" preserveAspectRatio="none"><path d="M0,285 C300,255 520,305 820,280 C1100,258 1280,300 1440,282 L1440,320 L0,320 Z"/></svg>
     </div>
     <div id="ground"></div>
+    <div id="decorLayer"></div>
     <div id="ambient"></div>
     <div id="field"></div>
     <div id="gardener"><span class="body">🧑‍🌾</span></div>
@@ -242,7 +250,8 @@
   <div id="topbar">
     <div class="stat">🪙 <b id="coins">0</b></div>
     <div class="stat">💩 ปุ๋ย <b id="fert">0</b></div>
-    <div class="stat spirit">✨ <b id="spirit">0</b> <small style="color:#9fb4a3">(+<span id="spiritBonus">0</span>%)</small></div>
+    <div class="stat prestige-lv" title="ระดับบารมี — โบนัสผลผลิตถาวร (ได้จากรีเบิร์ธ)">⭐ Lv <b id="prestigeLv">0</b> <small style="color:#9fb4a3">(+<span id="spiritBonus">0</span>%)</small></div>
+    <div class="stat spirit" title="Spirit — สกุลเงินไว้แลกของตกแต่ง">✨ <b id="spirit">0</b></div>
     <div id="spacer"></div>
     <button class="btn" id="boostBtn" title="โปรยปุ๋ยเร่งโตทั้งฟาร์ม (กด B)">🌱 โปรยปุ๋ย</button>
     <div id="menuWrap">
@@ -257,6 +266,7 @@
         <button class="btn" id="shopBtn">⬆️ อัปเกรด</button>
         <button class="btn" id="fertShopBtn">🏪 ร้านปุ๋ย</button>
         <button class="btn" id="masteryBtn">🌟 ความเชี่ยวชาญผัก</button>
+        <button class="btn" id="decorBtn">🏯 ของตกแต่ง</button>
         <button class="btn" id="questBtn">📜 เควส</button>
         <button class="btn prestige" id="prestigeBtn">🔄 รีเบิร์ธ</button>
         <button class="btn" id="settingBtn">⚙️ ตั้งค่า</button>
@@ -288,6 +298,13 @@
     <div id="masteryList"></div>
   </div></div>
 
+  <!-- Decorations -->
+  <div class="modal" id="decorModal"><div class="card">
+    <span class="close" data-close="decorModal">✕</span>
+    <h2>🏯 ของตกแต่งฟาร์ม</h2><div class="sub">ซื้อด้วย <b style="color:#b388ff">✨ Spirit ที่ใช้ได้</b> — โผล่บนฟาร์ม & ให้โบนัสถาวร (ใช้แต้มแล้วโบนัสพาสซีฟไม่ลด)</div>
+    <div id="decorList"></div>
+  </div></div>
+
   <!-- Quests -->
   <div class="modal" id="questModal"><div class="card">
     <span class="close" data-close="questModal">✕</span>
@@ -299,10 +316,10 @@
   <div class="modal" id="prestigeModal"><div class="card">
     <span class="close" data-close="prestigeModal">✕</span>
     <h2>🔄 รีเบิร์ธฟาร์ม</h2>
-    <div class="sub">รีเซ็ตเหรียญ/แปลง/อัปเกรด → ได้ <b style="color:#b388ff">✨ Farm Spirit</b> ถาวร เพิ่มผลผลิตทุกอย่าง</div>
+    <div class="sub">รีเซ็ตเหรียญ/แปลง/อัปเกรด → ได้ <b style="color:#ffd34d">⭐ บารมี</b> (โบนัสถาวร) + <b style="color:#b388ff">✨ Spirit</b> (ไว้แลกของตกแต่ง)</div>
     <div id="prestigeInfo"></div>
     <button class="btn prestige" id="doPrestige" style="width:100%;margin-top:12px;padding:12px;font-size:16px;">รีเบิร์ธเลย</button>
-    <div class="hint">Spirit ที่ได้ = √(เหรียญสะสมทั้งหมด ÷ 1e6) ปัดลง</div>
+    <div class="hint">⭐ บารมี & ✨ Spirit ที่ได้ = √(เหรียญสะสมทั้งหมด ÷ 1e6) ปัดลง (อย่างละเท่ากัน)</div>
   </div></div>
 
   <!-- Settings -->
