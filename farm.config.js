@@ -47,6 +47,14 @@ const CONFIG = {
   spiritBonusPer: 0.05,            // โบนัสมูลค่าขาย +x ต่อ 1 spirit
   spiritGrowPer: 0.02,             // โบนัสความเร็วโต +x ต่อ 1 spirit
 
+  // ----- 🚀 การเดินทาง — ปุ่มในเมนู (engine ผูก onclick ให้ตาม config นี้) -----
+  // lock = ต้องซื้อยานด้วย ✨ Spirit ก่อน ถึงจะเดินทางได้ (ปลดล็อกถาวร อยู่ข้ามรีเบิร์ธ)
+  travel: {
+    target: 'moon.html',
+    label: '🚀 เดินทางไปดวงจันทร์',
+    lock: {cost: 10, name: 'ยาน Apollo 11', em: '🚀'},
+  },
+
   // ----- Mastery (ความเชี่ยวชาญผัก) -----
   masteryPerLevel: 50,             // เก็บกี่ต้นต่อ 1 เลเวล mastery
   masteryYieldPer: 0.10,           // ผลผลิต +x ต่อเลเวล mastery

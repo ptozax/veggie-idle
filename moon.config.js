@@ -46,6 +46,13 @@ const CONFIG = {
   spiritBonusPer: 0.05,
   spiritGrowPer: 0.02,
 
+  // ----- 🚀 การเดินทาง — กลับโลกไม่ต้องปลดล็อก (lock: null) -----
+  travel: {
+    target: 'index.html',
+    label: '🌍 เดินทางกลับโลก (ฟาร์ม)',
+    lock: null,
+  },
+
   // ----- Mastery -----
   masteryPerLevel: 50,
   masteryYieldPer: 0.10,
