@@ -670,6 +670,7 @@ function maybeShootingStar(){
 }
 
 function maybeCat(){
+  if(document.hidden) return;              // ไม่เกิดตอนแท็บถูกบัง (โหมดเบา)
   if(Math.random()>CONFIG.catChance) return;
   const cat=$('#cat');
   cat.style.display='block';
