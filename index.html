@@ -62,6 +62,11 @@
   #decorLayer{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:1;}
   .decor-item{position:absolute;font-size:40px;transform:translateX(-50%);
     filter:drop-shadow(0 4px 5px rgba(0,0,0,.35));}
+  /* 🚀 ของตกแต่งที่คลิกเดินทางได้ — เด้งเบาๆ + เรืองฟ้าให้สังเกตว่าคลิกได้ */
+  .decor-item.travel{animation:decorbob 1.4s ease-in-out infinite;
+    filter:drop-shadow(0 0 10px rgba(122,209,255,.9)) drop-shadow(0 4px 5px rgba(0,0,0,.35));}
+  .decor-item.travel:hover{transform:translateX(-50%) scale(1.12);}
+  @keyframes decorbob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-7px)}}
 
   /* โทนแสงตามเวลา (กลางวัน/เย็น/กลางคืน) คลุมทั้งฉาก
      โหมดเบา: ใช้ alpha overlay ธรรมดา ไม่ใช้ mix-blend-mode (เลี่ยง recomposite ทั้งจอ) */
@@ -260,8 +265,6 @@
         <div class="stat" id="seasonStat">🌸 ใบไม้ผลิ</div>
         <div class="stat" id="weatherStat">☀️</div>
         <div class="stat" id="timeStat">🌅 เช้า</div>
-        <div class="menusep"></div>
-        <button class="btn" id="travelBtn" style="border-color:#7ad1ff;color:#7ad1ff;">🚀 เดินทางไปดวงจันทร์</button>
         <div class="menusep"></div>
         <button class="btn" id="autoBtn">🤖 ปลูกอัตโนมัติ: เปิด</button>
         <div class="menusep"></div>

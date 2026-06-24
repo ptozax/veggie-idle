@@ -32,7 +32,6 @@ function freshState(){
     coins: CONFIG.startCoins, fert: CONFIG.startFert,
     spirit: 0,                     // ✨ สกุลเงินสำหรับแลกของ (ใช้แล้วลด)
     prestigeLv: 0,                 // ⭐ ระดับบารมี — ขับโบนัสพาสซีฟ (ขึ้นอย่างเดียว ไม่ลด)
-    apollo: false,                 // 🚀 ซื้อยานเดินทางแล้วหรือยัง (ปลดล็อกถาวร อยู่ข้ามรีเบิร์ธ)
     totalEarned: 0,
     plotCount: PLOT_BASE,
     decor: {},                     // ของตกแต่ง: id->level
@@ -837,6 +836,7 @@ function renderFertShop(){
 
 // ---------- 🏯 ของตกแต่ง ----------
 function decorEffText(d){
+  if(d.type==='travel') return 'คลิกยานบนฟาร์มเพื่อเดินทาง';
   const e = decorLvl(d.id) * d.per;
   if(d.type==='sell')   return `ขาย +${Math.round(e*100)}%`;
   if(d.type==='grow')   return `โต +${Math.round(e*100)}%`;
@@ -859,6 +859,13 @@ function renderDecorScene(){
     el.style.fontSize = (d.size || 40) + 'px';   // ขนาดแยกทีละชิ้น (ไม่ใส่ใน CONFIG = 40)
     el.style.left = d.pos + '%';
     el.style.bottom = gh + '%';   // ตั้งนิ่งที่ขอบบนพื้นดิน — แถบหญ้าบังโคนให้เหมือนปักในหญ้า
+    if(d.goto){                   // 🚀 ของตกแต่งที่คลิกเดินทางได้ (เช่น ยาน Apollo) — เปิดรับคลิก + ทำให้สังเกตเห็น
+      el.classList.add('travel');
+      el.style.pointerEvents = 'auto';
+      el.style.cursor = 'pointer';
+      el.title = 'คลิกเพื่อเดินทาง 🚀';
+      el.onclick = ()=>{ save(); location.href = d.goto; };
+    }
     layer.appendChild(el);
   });
 }
@@ -882,7 +889,8 @@ function renderDecorShop(){
       if(S.spirit < cost){ toast('✨ Spirit ไม่พอ — ต้องมี '+fmt(cost)); return; }
       S.spirit -= cost;
       S.decor[d.id] = lv+1;
-      if(lv===0) toast('🏯 วาง '+d.nm+' ลงฟาร์มแล้ว!');
+      if(d.type==='travel') toast(`${d.em} ซื้อ${d.nm}แล้ว! คลิกยานบนฟาร์มเพื่อเดินทาง`);
+      else if(lv===0) toast('🏯 วาง '+d.nm+' ลงฟาร์มแล้ว!');
       updateHUD(); renderDecorShop(); renderDecorScene(); save();
     };
     list.appendChild(r);
@@ -987,12 +995,11 @@ function renderPrestige(){
 function doPrestige(){
   const g=spiritGain(); if(g<1) return;
   const keepLv=S.prestigeLv+g, keepSpirit=S.spirit+g, keepMastery=S.mastery;
-  const keepDecor=S.decor||{}, keepApollo=S.apollo;
+  const keepDecor=S.decor||{};
   S=freshState();
   S.prestigeLv=keepLv;          // ⭐ บารมี (โบนัส) — สะสมขึ้นอย่างเดียว
   S.spirit=keepSpirit;          // ✨ สปิริต (กระเป๋า) — ไว้แลกของ
-  S.mastery=keepMastery; S.decor=keepDecor;   // ของตกแต่ง & ความเชี่ยวชาญ เป็นของถาวร
-  S.apollo=keepApollo;          // 🚀 ยานเดินทาง — ปลดล็อกถาวร ไม่ต้องซื้อใหม่
+  S.mastery=keepMastery; S.decor=keepDecor;   // ของตกแต่ง (รวมยาน 🚀) & ความเชี่ยวชาญ เป็นของถาวร
   ensureQuest(); layoutField(); buildSeedbar(); renderDecorScene(); updateHUD();
   $('#prestigeModal').classList.remove('show');
   toast(`🔄 รีเบิร์ธสำเร็จ! ⭐ Lv ${fmt(keepLv)} · ✨ ${fmt(keepSpirit)}`);
@@ -1075,24 +1082,13 @@ function bindUI(){
   updateHUD();
   updateBoostBtn();
 }
-// ---- 🚀 ปุ่มเดินทาง (ผูกตาม CONFIG.travel) — ฟาร์ม: ต้องซื้อยานก่อน · จันทร์: กลับได้เลย ----
+// ---- 🚀 ปุ่มเดินทางในเมนู (ผูกตาม CONFIG.travel) — ใช้ฝั่งจันทร์เพื่อกลับโลก
+//      ฝั่งฟาร์มไม่มีปุ่มนี้แล้ว (เดินทางโดยคลิกไอคอนยาน 🚀 บนฉาก — ดู renderDecorScene) ----
 function bindTravel(){
   const btn = $('#travelBtn'); const t = CONFIG.travel;
-  if(!btn || !t) return;                 // ไม่มี config → ปล่อย onclick เดิมใน HTML
-  const go = ()=>{ save(); location.href = t.target; };
-  if(!t.lock){ btn.onclick = go; btn.textContent = t.label; return; }
-  const lk = t.lock;
-  const refresh = ()=>{
-    if(S.apollo){ btn.textContent = t.label; btn.onclick = go; return; }
-    btn.textContent = `🔒 ${t.label} (✨${lk.cost})`;
-    btn.onclick = ()=>{
-      if(S.spirit < lk.cost){ toast(`✨ Spirit ไม่พอ — ต้องมี ${lk.cost} เพื่อซื้อ ${lk.em} ${lk.name}`); return; }
-      if(!confirm(`ซื้อ ${lk.em} ${lk.name} ด้วย ✨ ${lk.cost} Spirit เพื่อปลดล็อกการเดินทางถาวร?`)) return;
-      S.spirit -= lk.cost; S.apollo = true; updateHUD(); save(); refresh();
-      toast(`${lk.em} ซื้อ${lk.name}สำเร็จ! กดอีกครั้งเพื่อเดินทาง`);
-    };
-  };
-  refresh();
+  if(!btn || !t) return;                 // ไม่มีปุ่ม/ไม่มี config → ข้าม
+  btn.textContent = t.label;
+  btn.onclick = ()=>{ save(); location.href = t.target; };
 }
 function openModal(id){
   document.querySelectorAll('.modal').forEach(m=>m.classList.remove('show'));
