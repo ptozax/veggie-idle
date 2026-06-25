@@ -278,28 +278,37 @@ function applyLayout(){
   // วางแปลงให้ "นั่ง" บนผิวดิน: ยึดขอบบนของกริดไว้ใกล้เส้นหญ้า แล้วแถวไล่ลงไปในเนื้อดิน
   // เส้นหญ้าอยู่ที่ gh% จากขอบล่าง = (100-gh)% จากขอบบน · sink = ฝังแถวบนใต้หญ้านิดให้เหมือนปักดิน
   // b (สไลเดอร์) = ดันแปลงขึ้น/ลงจากผิวดิน (b มาก = สูงขึ้น) · ใช้ top แทน bottom เพื่อให้แถวเพิ่มลงในดิน
-  const sink = 3;
-  fieldEl.style.bottom = 'auto';
-  fieldEl.style.top = ((100 - gh) - (b - CONFIG.defaultFieldBottom) + sink) + '%';
-  // แถวเดียวยาว → ย่อให้พอดีความกว้างจอ (ไม่ล้นขอบ) แล้วคูณกับขนาดที่ผู้ใช้ตั้ง
-  let drawScale = sc;
-  const natW = fieldEl.scrollWidth;
-  if(natW > 0){
-    const avail = window.innerWidth * 0.96;
-    if(natW * sc > avail) drawScale = avail / natW;
-  }
-  if(S.fieldPos==='left'){
-    fieldEl.style.left='2%'; fieldEl.style.right='auto';
-    fieldEl.style.transformOrigin='top left';
-    fieldEl.style.transform=`scale(${drawScale})`;
-  }else if(S.fieldPos==='right'){
-    fieldEl.style.left='auto'; fieldEl.style.right='2%';
-    fieldEl.style.transformOrigin='top right';
-    fieldEl.style.transform=`scale(${drawScale})`;
-  }else{
-    fieldEl.style.left='50%'; fieldEl.style.right='auto';
-    fieldEl.style.transformOrigin='top center';
-    fieldEl.style.transform=`translateX(-50%) scale(${drawScale})`;
+  // ===== 2.5D: วางต้นไม้เป็นแถวลึกซ้อนกัน — ใกล้=ใหญ่/ต่ำ, ไกล=เล็ก/สูง, เยื้องสลับ, หน้าทับหลัง
+  // ต้นไม้อยู่โฟร์กราวด์ (ใต้เส้นหญ้า) · decorations อยู่แนวเส้นหญ้าด้านหลัง → ไม่บังกัน
+  fieldEl.style.left = fieldEl.style.right = fieldEl.style.top = fieldEl.style.bottom = '';
+  fieldEl.style.transform = '';
+  const kids = fieldEl.children, n = kids.length;
+  if(n){
+    const ROWS = Math.max(1, Math.min(CONFIG.fieldRows || 3, n));
+    const perRow = Math.ceil(n / ROWS);
+    const groups = Math.ceil(n / perRow);                  // จำนวนแถวจริง
+    const centerX = S.fieldPos==='left' ? 34 : S.fieldPos==='right' ? 66 : 50;
+    const vOff = b - CONFIG.defaultFieldBottom;            // สไลเดอร์ดันฟาร์มขึ้น/ลง
+    const bandBack  = (gh - 6) + vOff;                     // แถวหลังสุด (ใต้เส้นหญ้านิดเดียว)
+    const bandFront = Math.max(4, gh * 0.20) + vOff;       // แถวหน้าสุด (โฟร์กราวด์)
+    for(let i=0;i<n;i++){
+      const g = Math.floor(i / perRow);                   // g=0 = แถวหน้าสุด
+      const col = i % perRow;
+      const cnt = Math.min(perRow, n - g*perRow);
+      const d = groups>1 ? (groups-1-g)/(groups-1) : 1;   // d=1 หน้า, d=0 หลัง
+      const B = bandBack + d*(bandFront - bandBack);
+      const s = (0.55 + d*0.5) * sc;
+      const rowW = 64 + d*30;                             // แถวหน้ากว้างกว่าแถวหลัง (perspective)
+      const stagger = (g % 2) ? (rowW/cnt)/2 : 0;         // เยื้องสลับฟันปลา อุดช่องว่าง
+      const x = centerX - rowW/2 + rowW*((col+0.5)/cnt) + stagger;
+      const p = kids[i];
+      p.style.left = x.toFixed(2)+'%';
+      p.style.bottom = B.toFixed(2)+'%';
+      p.style.top = 'auto';
+      p.style.transformOrigin = 'bottom center';
+      p.style.transform = `translateX(-50%) scale(${s.toFixed(3)})`;
+      p.style.zIndex = (groups - g);                      // แถวหน้าทับแถวหลัง
+    }
   }
   gardenerEl.style.bottom = 'auto';
   renderDecorScene();   // วาง/ปรับตำแหน่งของตกแต่งให้ตรงระดับพื้นดินปัจจุบัน
@@ -332,18 +341,16 @@ function gridColsFor(n){
 
 function layoutField(){
   if(typeof clearPest==='function') clearPest();   // ลบศัตรูพืชค้าง ก่อนสร้างกริดใหม่
-  // แถวเดียวยาวพาดหน้าดิน: ทุกช่อง (รวมที่ล็อก) เรียงแนวเดียว · ตั้ง fieldSingleRow:false เพื่อกลับไปเป็นกริด
-  const oneRow = CONFIG.fieldSingleRow !== false;
-  const buyable = S.plotCount < PLOT_MAX ? 1 : 0;    // โชว์เฉพาะแปลงที่ปลดล็อก + ช่องซื้อถัดไปอีก 1 ช่อง
+  // โชว์เฉพาะแปลงที่ปลดล็อก + ช่องซื้อถัดไปอีก 1 ช่อง · ตำแหน่งแบบ 2.5D คำนวณใน applyLayout
+  const buyable = S.plotCount < PLOT_MAX ? 1 : 0;
   const visible = S.plotCount + buyable;
-  const cols = oneRow ? visible : gridColsFor(S.plotCount);
-  fieldEl.style.gridTemplateColumns = `repeat(${cols},1fr)`;
   fieldEl.innerHTML = '';
   while(S.plots.length < PLOT_MAX) S.plots.push(null);
 
   for(let i=0;i<visible;i++){
     const d = document.createElement('div');
     d.className='plot'; d.dataset.i=i;
+    d.style.position='absolute'; d.style.pointerEvents='auto';
     if(i>=S.plotCount){            // ช่องซื้อถัดไป (ช่องเดียว) — กดเพื่อขยายฟาร์ม
       d.classList.add('locked');
       d.innerHTML = `🔒<div class="lockcost">🪙${fmt(plotCost(S.plotCount+1))}</div>`;
@@ -355,7 +362,7 @@ function layoutField(){
     fieldEl.appendChild(d);
   }
   renderPlots();
-  applyLayout();   // จำนวนช่องเปลี่ยน → จัดตำแหน่ง & ย่อแถวให้พอดีจอใหม่
+  applyLayout();   // จำนวนช่องเปลี่ยน → จัดตำแหน่งต้นไม้ 2.5D ใหม่
 }
 
 function buyPlot(){

@@ -73,14 +73,15 @@
     background:transparent;transition:background 3s linear;}
 
   /* ===== FIELD / PLOTS ===== */
-  #field{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);
-    display:grid;gap:10px;z-index:5;}
+  /* field = เลเยอร์วางต้นแบบ 2.5D (ตำแหน่งแต่ละต้นคำนวณใน JS) · โปร่งคลิกทะลุได้ ต้นเองรับคลิก */
+  #field{position:absolute;inset:0;z-index:5;pointer-events:none;}
   /* พืชยืนต้น — ไม่มีกรอบ/กล่อง · ตัวต้นใหญ่ยืนบนหน้าดิน · คลิกได้ทั้งช่อง */
   .plot{width:78px;height:118px;
     display:flex;align-items:flex-end;justify-content:center;position:relative;
     cursor:pointer;font-size:74px;transition:transform .12s;}
-  .plot:hover{transform:translateY(-3px);}
-  .plot:active{transform:translateY(1px);}
+  /* hover ใช้ brightness แทน transform (เพราะ transform ถูกใช้วางตำแหน่ง/สเกล 2.5D แล้ว) */
+  .plot:hover{filter:brightness(1.12);}
+  .plot:active{filter:brightness(.94);}
   /* ต้น = ฐานอยู่ตลอด (ไม่โต) · ผลผลิต (.fruit) งอกโผล่บนต้นแล้วค่อย ๆ โต */
   .plot .crop{position:relative;display:inline-block;transition:transform .3s;transform-origin:bottom center;}
   .plot .crop .foliage{display:block;line-height:1;filter:drop-shadow(0 5px 5px rgba(0,0,0,.35));}
