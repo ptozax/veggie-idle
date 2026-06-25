@@ -75,33 +75,39 @@
   /* ===== FIELD / PLOTS ===== */
   #field{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);
     display:grid;gap:10px;z-index:5;}
-  .plot{width:74px;height:74px;border-radius:12px;
-    background:linear-gradient(#2e3550,#1a1f33);
-    border:2px solid rgba(0,0,0,.25);
-    box-shadow:0 6px 0 rgba(0,0,0,.25), inset 0 2px 6px rgba(255,255,255,.06);
-    display:flex;align-items:center;justify-content:center;position:relative;
-    cursor:pointer;font-size:34px;transition:transform .1s;}
-  .plot:hover{transform:translateY(-2px);}
+  /* พืชยืนต้น — ไม่มีกรอบ/กล่อง · ตัวต้นใหญ่ยืนบนหน้าดิน · คลิกได้ทั้งช่อง */
+  .plot{width:78px;height:118px;
+    display:flex;align-items:flex-end;justify-content:center;position:relative;
+    cursor:pointer;font-size:74px;transition:transform .12s;}
+  .plot:hover{transform:translateY(-3px);}
   .plot:active{transform:translateY(1px);}
-  .plot .crop{transition:transform .3s;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4));}
-  .plot.ready .crop{animation:bob .9s infinite ease-in-out;}
-  .plot.ready{box-shadow:0 6px 0 rgba(0,0,0,.25),0 0 18px 4px rgba(126,217,87,.55), inset 0 2px 6px rgba(255,255,255,.06);}
-  .plot.golden{box-shadow:0 6px 0 rgba(0,0,0,.25),0 0 22px 6px rgba(255,211,77,.8);}
-  /* 🌈 ผักกลายพันธุ์: เรืองสีรุ้ง + ตัวผักไล่เฉดสี (เกิดเฉพาะต้นหายาก จึงไม่กิน GPU) */
-  .plot.mutant{box-shadow:0 6px 0 rgba(0,0,0,.25),0 0 26px 7px rgba(84,224,255,.85);animation:mutbox 1.6s linear infinite;}
-  .plot.mutant .crop{animation:bob .9s infinite ease-in-out, muthue 2s linear infinite;}
-  @keyframes muthue{from{filter:hue-rotate(0deg) drop-shadow(0 2px 3px rgba(0,0,0,.4))}to{filter:hue-rotate(360deg) drop-shadow(0 2px 3px rgba(0,0,0,.4))}}
-  @keyframes mutbox{0%,100%{box-shadow:0 6px 0 rgba(0,0,0,.25),0 0 22px 6px rgba(84,224,255,.7)}50%{box-shadow:0 6px 0 rgba(0,0,0,.25),0 0 30px 9px rgba(180,120,255,.85)}}
-  /* 🐛 ศัตรูพืช: เกาะบนแปลง คลิกเพื่อไล่ */
-  .plot .pest{position:absolute;top:-6px;right:-4px;font-size:24px;z-index:7;cursor:pointer;
+  /* ต้น = ฐานอยู่ตลอด (ไม่โต) · ผลผลิต (.fruit) งอกโผล่บนต้นแล้วค่อย ๆ โต */
+  .plot .crop{position:relative;display:inline-block;transition:transform .3s;transform-origin:bottom center;}
+  .plot .crop .foliage{display:block;line-height:1;filter:drop-shadow(0 5px 5px rgba(0,0,0,.35));}
+  .plot .crop .fruit{position:absolute;left:50%;top:16%;font-size:.5em;
+    transform:translateX(-50%) scale(0);transform-origin:center;
+    transition:transform .35s cubic-bezier(.34,1.56,.64,1);
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,.55));}
+  /* สุก/ทอง/กลายพันธุ์ = เรืองที่ "ตัวต้น" ด้วย filter แทนกรอบกล่อง (ต้นยืนนิ่ง ไม่ขยับ) */
+  .plot.ready .crop .foliage{filter:drop-shadow(0 5px 5px rgba(0,0,0,.35)) drop-shadow(0 0 12px rgba(126,217,87,.7));}
+  .plot.golden .crop .foliage{filter:drop-shadow(0 5px 5px rgba(0,0,0,.35)) drop-shadow(0 0 16px rgba(255,211,77,.95));}
+  /* 🌈 พืชกลายพันธุ์: ผลไล่เฉดสีรุ้ง + ต้นเรืองฟ้า (เกิดเฉพาะต้นหายาก จึงไม่กิน GPU) */
+  .plot.mutant .crop .fruit{animation:muthue 2s linear infinite;}
+  .plot.mutant .crop .foliage{filter:drop-shadow(0 5px 5px rgba(0,0,0,.35)) drop-shadow(0 0 18px rgba(84,224,255,.85));}
+  @keyframes muthue{from{filter:hue-rotate(0deg) drop-shadow(0 2px 3px rgba(0,0,0,.55))}to{filter:hue-rotate(360deg) drop-shadow(0 2px 3px rgba(0,0,0,.55))}}
+  /* 🐛 ศัตรูพืช: เกาะบนต้น คลิกเพื่อไล่ */
+  .plot .pest{position:absolute;top:2px;right:0;font-size:26px;z-index:7;cursor:pointer;
     filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));animation:pestbob .6s ease-in-out infinite;}
   .plot .pest:hover{transform:scale(1.2);}
   @keyframes pestbob{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-3px) rotate(8deg)}}
-  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-  .progbar{position:absolute;left:6px;right:6px;bottom:5px;height:5px;border-radius:3px;
-    background:rgba(0,0,0,.35);overflow:hidden;}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  .progbar{position:absolute;left:12%;right:12%;bottom:0;height:4px;border-radius:3px;
+    background:rgba(0,0,0,.3);overflow:hidden;opacity:.75;}
   .progbar i{display:block;height:100%;width:0;background:var(--green);border-radius:3px;transition:width .25s;}
-  .plot.locked{opacity:.35;cursor:not-allowed;font-size:22px;}
+  /* ช่องซื้อแปลงถัดไป = เส้นประจาง ๆ บอกว่าปลูกเพิ่มได้ */
+  .plot.locked{cursor:pointer;font-size:30px;height:74px;align-self:center;
+    align-items:center;border:2px dashed rgba(255,255,255,.25);border-radius:14px;opacity:.55;}
+  .plot.locked:hover{opacity:.95;border-color:var(--green);transform:none;}
   .lockcost{font-size:11px;color:var(--gold);position:absolute;bottom:6px;text-shadow:0 1px 2px #000;}
 
   /* gardener — ขยับด้วย transform(translate) → วิ่งบน compositor ไม่ trigger layout/paint ทั้งฉากทุกเฟรม

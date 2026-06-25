@@ -275,19 +275,31 @@ function applyLayout(){
   if(ground) ground.style.height = gh+'%';
   const hills = $('#hills');
   if(hills) hills.style.bottom = (gh-4)+'%';
-  fieldEl.style.bottom = b+'%';
+  // วางแปลงให้ "นั่ง" บนผิวดิน: ยึดขอบบนของกริดไว้ใกล้เส้นหญ้า แล้วแถวไล่ลงไปในเนื้อดิน
+  // เส้นหญ้าอยู่ที่ gh% จากขอบล่าง = (100-gh)% จากขอบบน · sink = ฝังแถวบนใต้หญ้านิดให้เหมือนปักดิน
+  // b (สไลเดอร์) = ดันแปลงขึ้น/ลงจากผิวดิน (b มาก = สูงขึ้น) · ใช้ top แทน bottom เพื่อให้แถวเพิ่มลงในดิน
+  const sink = 3;
+  fieldEl.style.bottom = 'auto';
+  fieldEl.style.top = ((100 - gh) - (b - CONFIG.defaultFieldBottom) + sink) + '%';
+  // แถวเดียวยาว → ย่อให้พอดีความกว้างจอ (ไม่ล้นขอบ) แล้วคูณกับขนาดที่ผู้ใช้ตั้ง
+  let drawScale = sc;
+  const natW = fieldEl.scrollWidth;
+  if(natW > 0){
+    const avail = window.innerWidth * 0.96;
+    if(natW * sc > avail) drawScale = avail / natW;
+  }
   if(S.fieldPos==='left'){
     fieldEl.style.left='2%'; fieldEl.style.right='auto';
-    fieldEl.style.transformOrigin='bottom left';
-    fieldEl.style.transform=`scale(${sc})`;
+    fieldEl.style.transformOrigin='top left';
+    fieldEl.style.transform=`scale(${drawScale})`;
   }else if(S.fieldPos==='right'){
     fieldEl.style.left='auto'; fieldEl.style.right='2%';
-    fieldEl.style.transformOrigin='bottom right';
-    fieldEl.style.transform=`scale(${sc})`;
+    fieldEl.style.transformOrigin='top right';
+    fieldEl.style.transform=`scale(${drawScale})`;
   }else{
     fieldEl.style.left='50%'; fieldEl.style.right='auto';
-    fieldEl.style.transformOrigin='bottom center';
-    fieldEl.style.transform=`translateX(-50%) scale(${sc})`;
+    fieldEl.style.transformOrigin='top center';
+    fieldEl.style.transform=`translateX(-50%) scale(${drawScale})`;
   }
   gardenerEl.style.bottom = 'auto';
   renderDecorScene();   // วาง/ปรับตำแหน่งของตกแต่งให้ตรงระดับพื้นดินปัจจุบัน
@@ -320,29 +332,30 @@ function gridColsFor(n){
 
 function layoutField(){
   if(typeof clearPest==='function') clearPest();   // ลบศัตรูพืชค้าง ก่อนสร้างกริดใหม่
-  const cols = gridColsFor(S.plotCount);
+  // แถวเดียวยาวพาดหน้าดิน: ทุกช่อง (รวมที่ล็อก) เรียงแนวเดียว · ตั้ง fieldSingleRow:false เพื่อกลับไปเป็นกริด
+  const oneRow = CONFIG.fieldSingleRow !== false;
+  const buyable = S.plotCount < PLOT_MAX ? 1 : 0;    // โชว์เฉพาะแปลงที่ปลดล็อก + ช่องซื้อถัดไปอีก 1 ช่อง
+  const visible = S.plotCount + buyable;
+  const cols = oneRow ? visible : gridColsFor(S.plotCount);
   fieldEl.style.gridTemplateColumns = `repeat(${cols},1fr)`;
   fieldEl.innerHTML = '';
   while(S.plots.length < PLOT_MAX) S.plots.push(null);
 
-  for(let i=0;i<PLOT_MAX;i++){
+  for(let i=0;i<visible;i++){
     const d = document.createElement('div');
     d.className='plot'; d.dataset.i=i;
-    if(i>=S.plotCount){
+    if(i>=S.plotCount){            // ช่องซื้อถัดไป (ช่องเดียว) — กดเพื่อขยายฟาร์ม
       d.classList.add('locked');
-      if(i===S.plotCount){
-        d.innerHTML = `🔒<div class="lockcost">🪙${fmt(plotCost(S.plotCount+1))}</div>`;
-        d.onclick = ()=>{ buyPlot(); };
-      }else{
-        d.innerHTML = '🔒';
-      }
+      d.innerHTML = `🔒<div class="lockcost">🪙${fmt(plotCost(S.plotCount+1))}</div>`;
+      d.onclick = ()=>{ buyPlot(); };
     }else{
-      d.innerHTML = `<span class="crop"></span><div class="progbar"><i></i></div>`;
+      d.innerHTML = `<span class="crop"><span class="foliage"></span><span class="fruit"></span></span><div class="progbar"><i></i></div>`;
       d.onclick = ()=>clickPlot(i);
     }
     fieldEl.appendChild(d);
   }
   renderPlots();
+  applyLayout();   // จำนวนช่องเปลี่ยน → จัดตำแหน่ง & ย่อแถวให้พอดีจอใหม่
 }
 
 function buyPlot(){
@@ -404,8 +417,13 @@ function renderPlot(i){
   const p = S.plots[i];
   const cs = el.querySelector('.crop'), bar = el.querySelector('.progbar i');
   if(!cs) return;
+  const fol = cs.querySelector('.foliage'), fr = cs.querySelector('.fruit');
   if(!p){
-    if(el._st!=='empty'){ cs.textContent=''; bar.style.width='0%'; el.classList.remove('ready','golden','mutant'); el._st='empty'; el._pct=-1; }
+    if(el._st!=='empty'){
+      if(fol) fol.textContent='';
+      if(fr){ fr.textContent=''; fr.style.transform='translateX(-50%) scale(0)'; }
+      bar.style.width='0%'; el.classList.remove('ready','golden','mutant'); el._st='empty'; el._pct=-1;
+    }
     return;
   }
   const c = crop(p.crop);
@@ -414,9 +432,11 @@ function renderPlot(i){
   const pct = Math.round(prog*100);
   if(el._st==='grow' && el._pct===pct) return;
   el._st='grow'; el._pct=pct;
-  const gs = CONFIG.theme.growStages;   // [เมล็ด, ต้นอ่อน] ก่อนโตเต็มเป็น c.em
-  cs.textContent = prog<0.33?gs[0]:prog<0.7?gs[1]:c.em;
-  cs.style.transform = `scale(${(0.6+prog*0.4).toFixed(2)})`;
+  const gs = CONFIG.theme.growStages;   // ต้นไม้คงที่ ไม่โต — มีแต่ผล (c.em) ที่งอกโตขึ้นบนต้น
+  fol.textContent = gs[1];              // ต้นไม้คงที่ตั้งแต่ปลูก เป็นฐานให้ผล
+  fr.textContent = c.em;
+  fr.style.transform = `translateX(-50%) scale(${prog.toFixed(2)})`;   // มีแต่ผลที่โตตามความคืบหน้า
+  cs.style.transform = 'none';          // ต้นไม่สเกล/ไม่โต
   bar.style.width = pct+'%';
   el.classList.toggle('ready', prog>=1);
   el.classList.toggle('golden', prog>=1 && p.golden);
@@ -999,10 +1019,16 @@ function doPrestige(){
   const g=spiritGain(); if(g<1) return;
   const keepLv=S.prestigeLv+g, keepSpirit=S.spirit+g, keepMastery=S.mastery;
   const keepDecor=S.decor||{};
+  // เก็บค่าตั้งค่า wallpaper ไว้ (ตำแหน่ง/ขนาดฟาร์ม/พื้นดิน/แถบผัก) — ไม่ให้หายตอนรีเบิร์ธ
+  const keepLayout = {
+    fieldPos:S.fieldPos, fieldScale:S.fieldScale, fieldBottom:S.fieldBottom, groundH:S.groundH,
+    seedPos:S.seedPos, seedScale:S.seedScale, seedBottom:S.seedBottom,
+  };
   S=freshState();
   S.prestigeLv=keepLv;          // ⭐ บารมี (โบนัส) — สะสมขึ้นอย่างเดียว
   S.spirit=keepSpirit;          // ✨ สปิริต (กระเป๋า) — ไว้แลกของ
   S.mastery=keepMastery; S.decor=keepDecor;   // ของตกแต่ง (รวมยาน 🚀) & ความเชี่ยวชาญ เป็นของถาวร
+  Object.assign(S, keepLayout);               // คืนค่าตั้งค่า wallpaper
   ensureQuest(); layoutField(); buildSeedbar(); renderDecorScene(); updateHUD();
   $('#prestigeModal').classList.remove('show');
   toast(`🔄 รีเบิร์ธสำเร็จ! ⭐ Lv ${fmt(keepLv)} · ✨ ${fmt(keepSpirit)}`);
