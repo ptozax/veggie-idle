@@ -69,6 +69,9 @@
   #decorLayer{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:1;}
   .decor-item{position:absolute;font-size:40px;transform:translateX(-50%);
     filter:drop-shadow(0 4px 5px rgba(0,0,0,.35));}
+  /* 🚀 ของตกแต่งที่คลิกเดินทางได้ — อยู่นิ่งเหมือนชิ้นอื่น แค่เรืองฟ้าบอกว่าคลิกได้ */
+  .decor-item.travel{cursor:pointer;
+    filter:drop-shadow(0 0 10px rgba(122,209,255,.9)) drop-shadow(0 4px 5px rgba(0,0,0,.35));}
 
   /* โทนแสงตามเวลา (กลางวัน/เย็น/กลางคืน) คลุมทั้งฉาก
      โหมดเบา: ใช้ alpha overlay ธรรมดา ไม่ใช้ mix-blend-mode (เลี่ยง recomposite ทั้งจอ) */

@@ -216,6 +216,7 @@ function computeOffline(){
     const c = crop(p.crop); if(!c) return;
     const gm = WEATHERS.sun.grow * upEff('speed') * masteryGrow(c.id) * (1+S.prestigeLv*CONFIG.spiritGrowPer) * (1+decorSum('grow'));
     const realGrow = c.grow / gm;
+    if(!(realGrow > 0)) return;          // กัน NaN/0/Infinity → ลูป cycles ไม่รู้จบ (เกมค้างตอนโหลด)
     let elapsed = (Date.now()-p.plantedAt)/1000;
     if(elapsed >= realGrow){
       if(S.auto){
@@ -456,23 +457,29 @@ function renderPlots(){ for(let i=0;i<S.plotCount;i++) renderPlot(i); }
 function renderPlot(i){
   const el = fieldEl.children[i]; if(!el || el.classList.contains('locked')) return;
   const p = S.plots[i];
-  const cs = el.querySelector('.crop'), bar = el.querySelector('.progbar i');
-  if(!cs) return;
-  const fol = cs.querySelector('.foliage'), fr = cs.querySelector('.fruit');
   if(!p){
     if(el._st!=='empty'){
-      if(fol) fol.textContent='';
-      if(fr){ fr.textContent=''; fr.style.transform='translateX(-50%) scale(0)'; }
-      bar.style.width='0%'; el.classList.remove('ready','golden','mutant'); el._st='empty'; el._pct=-1;
+      const cs = el.querySelector('.crop'), bar = el.querySelector('.progbar i');
+      if(cs){
+        const fol = cs.querySelector('.foliage'), fr = cs.querySelector('.fruit');
+        if(fol) fol.textContent='';
+        if(fr){ fr.textContent=''; fr.style.transform='translateX(-50%) scale(0)'; }
+      }
+      if(bar) bar.style.width='0%';
+      el.classList.remove('ready','golden','mutant'); el._st='empty'; el._pct=-1;
     }
     return;
   }
   const c = crop(p.crop);
+  if(!c) return;                        // กันเซฟเก่า/พังที่อ้างพืชที่ไม่มีแล้ว (กัน crash ตอน render)
   const realGrow = c.grow/growMult(c.id);
   const prog = Math.min(1,(Date.now()-p.plantedAt)/1000/realGrow);
   const pct = Math.round(prog*100);
-  if(el._st==='grow' && el._pct===pct) return;
+  if(el._st==='grow' && el._pct===pct) return;   // ออกก่อนแตะ DOM — กัน querySelector ทุก tick ที่ค่าไม่เปลี่ยน
   el._st='grow'; el._pct=pct;
+  const cs = el.querySelector('.crop'); if(!cs) return;
+  const bar = el.querySelector('.progbar i');
+  const fol = cs.querySelector('.foliage'), fr = cs.querySelector('.fruit');
   const gs = CONFIG.theme.growStages;   // ต้นไม้คงที่ ไม่โต — มีแต่ผล (c.em) ที่งอกโตขึ้นบนต้น
   fol.textContent = gs[1];              // ต้นไม้คงที่ตั้งแต่ปลูก เป็นฐานให้ผล
   fr.textContent = c.em;
