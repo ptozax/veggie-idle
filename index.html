@@ -39,12 +39,12 @@
   #stars.static .star{animation:none;}             /* โหมดเบา: ดาวนิ่ง ไม่กะพริบ (ประหยัด GPU สุด) */
 
   /* เนินเขาซ้อนชั้น (parallax) */
-  #hills{position:absolute;left:0;right:0;bottom:28%;height:40%;z-index:1;}
-  #hills svg{position:absolute;left:0;bottom:0;width:100%;height:100%;}
-  #hills .far  path{fill:#86b4c7;}
-  #hills .mid  path{fill:#5f9070;}
-  #hills .near path{fill:#467a48;}
-  #hills .tree{position:absolute;bottom:0;font-size:30px;filter:drop-shadow(0 4px 4px rgba(0,0,0,.25));}
+  .hills{position:absolute;left:0;right:0;bottom:28%;height:40%;z-index:1;}
+  .hills svg{position:absolute;left:0;bottom:0;width:100%;height:100%;}
+  .hills .far  path{fill:#86b4c7;}
+  .hills .mid  path{fill:#5f9070;}
+  .hills .near path{fill:#467a48;}
+  .hills .tree{position:absolute;bottom:0;font-size:30px;filter:drop-shadow(0 4px 4px rgba(0,0,0,.25));}
 
   /* สนามหญ้าเขียวเรียบ (ไม่มีลาย) + แนวหญ้าขอบบน */
   #ground{position:absolute;left:0;right:0;bottom:0;height:32%;z-index:2;
@@ -54,6 +54,9 @@
     background:linear-gradient(#8fd866,#6cb544);
     border-radius:100% 100% 0 0 / 100% 100% 0 0;
     box-shadow:0 4px 10px rgba(0,0,0,.18);}
+  /* แบ่งหน้าจอ: พื้นเต็มจอแล้ว clip เป็นขั้น → ปิด crest/เงาที่ผูกกับขอบบนเดิม */
+  #ground.split{box-shadow:none;}
+  #ground.split::before{display:none;}
 
   /* 🏯 ของตกแต่ง — อยู่ระหว่าง layer ต้นไม้บนเนิน (#hills z1) กับ หญ้า/พื้นดิน (#ground z2)
      z-index:1 เท่า hills แต่ DOM อยู่ทีหลัง → หน้าต้นไม้ · ground z2 พ่นทับฐาน → เหมือนปักในหญ้า · โดน ambient (z3) คลุมแสง */
@@ -237,7 +240,7 @@
     <div id="stars"></div>
     <div id="sunGlow"></div>
     <div id="celestial">☀️</div>
-    <div id="hills">
+    <div id="hills" class="hills">
       <svg class="far" viewBox="0 0 1440 320" preserveAspectRatio="none"><path d="M0,210 C220,150 380,250 620,200 C880,150 1080,250 1440,190 L1440,320 L0,320 Z"/></svg>
       <svg class="mid" viewBox="0 0 1440 320" preserveAspectRatio="none"><path d="M0,250 C260,200 460,290 760,240 C1020,200 1240,280 1440,240 L1440,320 L0,320 Z"/></svg>
       <svg class="near" viewBox="0 0 1440 320" preserveAspectRatio="none"><path d="M0,285 C300,255 520,305 820,280 C1100,258 1280,300 1440,282 L1440,320 L0,320 Z"/></svg>
@@ -353,8 +356,18 @@
       <input type="range" id="bottomRange" min="2" max="30" step="1" style="width:160px;">
     </div>
 
-    <div class="row"><div class="l"><b>⛰️ ความสูงพื้นดิน</b><small>ปรับระดับเส้นขอบฟ้า/พื้นดิน</small></div>
+    <div class="row"><div class="l"><b>⛰️ ความสูงพื้นดิน</b><small>ปรับระดับเส้นขอบฟ้า/พื้นดิน (ฝั่งซ้ายเมื่อแบ่งจอ)</small></div>
       <input type="range" id="groundRange" min="15" max="55" step="1" style="width:160px;">
+    </div>
+
+    <div class="row"><div class="l"><b>🖥️ แบ่งหน้าจอ (2 จอ)</b><small>ตั้งความสูงพื้นซ้าย/ขวาแยกกัน — สำหรับ 2 จอที่สูงไม่เท่ากัน</small></div>
+      <button class="btn" id="splitBtn">ปิด</button>
+    </div>
+    <div class="row splitRow"><div class="l"><b>⛰️ ความสูงพื้นดิน (จอขวา)</b><small>ใช้เมื่อเปิดแบ่งหน้าจอ</small></div>
+      <input type="range" id="groundRRange" min="15" max="55" step="1" style="width:160px;">
+    </div>
+    <div class="row splitRow"><div class="l"><b>↔️ ตำแหน่งรอยต่อจอ</b><small>จุดแบ่งซ้าย-ขวา (% จากซ้าย)</small></div>
+      <input type="range" id="splitAtRange" min="20" max="80" step="1" style="width:160px;">
     </div>
 
     <div class="row"><div class="l"><b>🌱 ตำแหน่งแถบผัก</b><small>ย้ายแถบเลือกผัก ซ้าย/กลาง/ขวา</small></div>

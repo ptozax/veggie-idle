@@ -47,6 +47,9 @@ function freshState(){
     fieldScale: CONFIG.defaultFieldScale,
     fieldBottom: CONFIG.defaultFieldBottom,
     groundH: CONFIG.defaultGroundH,
+    groundH2: CONFIG.defaultGroundH,   // ความสูงพื้นจอขวา (ใช้เมื่อ splitScreen เปิด)
+    splitScreen: false,                // แบ่งหน้าจอ 2 จอ → ตั้งความสูงพื้นซ้าย/ขวาแยกกัน
+    splitAt: 50,                       // ตำแหน่งรอยต่อจอ (% จากซ้าย)
     seedPos: CONFIG.defaultSeedPos,
     seedScale: CONFIG.defaultSeedScale,
     seedBottom: CONFIG.defaultSeedBottom,
@@ -270,16 +273,46 @@ function fertDropChance(){ return upEff('fert') + fertEff('compostKing') + decor
 // =================================================================
 function applyLayout(){
   const sc = S.fieldScale||1, b = S.fieldBottom||5;
-  const gh = S.groundH||CONFIG.defaultGroundH;
+  const gh = S.groundH||CONFIG.defaultGroundH;             // ความสูงพื้นจอซ้าย/ค่าหลัก
+  const split = !!S.splitScreen;
+  const ghR = split ? (S.groundH2||CONFIG.defaultGroundH) : gh;  // ความสูงพื้นจอขวา
+  const splitAt = split ? (S.splitAt||50) : 100;          // ตำแหน่งรอยต่อจอ (%)
+  const ghAt = x => (split && x >= splitAt) ? ghR : gh;    // ความสูงพื้น ณ ตำแหน่ง x
+
   const ground = $('#ground');
-  if(ground) ground.style.height = gh+'%';
+  if(ground){
+    if(split){
+      // พื้นเต็มจอ แล้วตัด (clip) ให้ขอบบนเป็นขั้น: ซ้ายสูง gh · ขวาสูง ghR (รอยต่อที่ splitAt)
+      ground.style.height = '100%';
+      const cp = `polygon(0% ${100-gh}%, ${splitAt}% ${100-gh}%, ${splitAt}% ${100-ghR}%, 100% ${100-ghR}%, 100% 100%, 0% 100%)`;
+      ground.style.clipPath = cp; ground.style.webkitClipPath = cp;
+      ground.classList.add('split');
+    }else{
+      ground.style.height = gh+'%';
+      ground.style.clipPath = 'none'; ground.style.webkitClipPath = 'none';
+      ground.classList.remove('split');
+    }
+  }
+  // ภูเขาพื้นหลัง: แบ่งจอ → แยกซ้าย/ขวา แต่ละฝั่งวางตามระดับพื้นฝั่งตัวเอง (ไม่งั้นพื้นฝั่งสูงกว่าจะบังภูเขา)
   const hills = $('#hills');
-  if(hills) hills.style.bottom = (gh-4)+'%';
-  // วางแปลงให้ "นั่ง" บนผิวดิน: ยึดขอบบนของกริดไว้ใกล้เส้นหญ้า แล้วแถวไล่ลงไปในเนื้อดิน
-  // เส้นหญ้าอยู่ที่ gh% จากขอบล่าง = (100-gh)% จากขอบบน · sink = ฝังแถวบนใต้หญ้านิดให้เหมือนปักดิน
-  // b (สไลเดอร์) = ดันแปลงขึ้น/ลงจากผิวดิน (b มาก = สูงขึ้น) · ใช้ top แทน bottom เพื่อให้แถวเพิ่มลงในดิน
+  if(hills){
+    hills.style.bottom = (gh-4)+'%';
+    let hillsR = $('#hillsR');
+    if(split){
+      hills.style.clipPath = hills.style.webkitClipPath = `inset(0 ${100-splitAt}% 0 0)`;   // โชว์เฉพาะครึ่งซ้าย
+      if(!hillsR){ hillsR = hills.cloneNode(true); hillsR.id='hillsR'; hills.parentNode.insertBefore(hillsR, hills.nextSibling); }
+      hillsR.style.display = '';
+      hillsR.style.bottom = (ghR-4)+'%';
+      hillsR.style.clipPath = hillsR.style.webkitClipPath = `inset(0 0 0 ${splitAt}%)`;       // โชว์เฉพาะครึ่งขวา
+    }else{
+      hills.style.clipPath = hills.style.webkitClipPath = 'none';
+      if(hillsR) hillsR.style.display = 'none';
+    }
+  }
+
   // ===== 2.5D: วางต้นไม้เป็นแถวลึกซ้อนกัน — ใกล้=ใหญ่/ต่ำ, ไกล=เล็ก/สูง, เยื้องสลับ, หน้าทับหลัง
   // ต้นไม้อยู่โฟร์กราวด์ (ใต้เส้นหญ้า) · decorations อยู่แนวเส้นหญ้าด้านหลัง → ไม่บังกัน
+  // แต่ละต้นใช้ความสูงพื้นตามฝั่งจอ (ghAt) → รองรับ split screen พื้นซ้าย/ขวาไม่เท่ากัน
   fieldEl.style.left = fieldEl.style.right = fieldEl.style.top = fieldEl.style.bottom = '';
   fieldEl.style.transform = '';
   const kids = fieldEl.children, n = kids.length;
@@ -289,18 +322,19 @@ function applyLayout(){
     const groups = Math.ceil(n / perRow);                  // จำนวนแถวจริง
     const centerX = S.fieldPos==='left' ? 34 : S.fieldPos==='right' ? 66 : 50;
     const vOff = b - CONFIG.defaultFieldBottom;            // สไลเดอร์ดันฟาร์มขึ้น/ลง
-    const bandBack  = (gh - 6) + vOff;                     // แถวหลังสุด (ใต้เส้นหญ้านิดเดียว)
-    const bandFront = Math.max(4, gh * 0.20) + vOff;       // แถวหน้าสุด (โฟร์กราวด์)
     for(let i=0;i<n;i++){
       const g = Math.floor(i / perRow);                   // g=0 = แถวหน้าสุด
       const col = i % perRow;
       const cnt = Math.min(perRow, n - g*perRow);
       const d = groups>1 ? (groups-1-g)/(groups-1) : 1;   // d=1 หน้า, d=0 หลัง
-      const B = bandBack + d*(bandFront - bandBack);
       const s = (0.55 + d*0.5) * sc;
       const rowW = 64 + d*30;                             // แถวหน้ากว้างกว่าแถวหลัง (perspective)
       const stagger = (g % 2) ? (rowW/cnt)/2 : 0;         // เยื้องสลับฟันปลา อุดช่องว่าง
       const x = centerX - rowW/2 + rowW*((col+0.5)/cnt) + stagger;
+      const ghHere = ghAt(x);                              // ความสูงพื้นฝั่งที่ต้นนี้อยู่
+      const bandBack  = (ghHere - 6) + vOff;
+      const bandFront = Math.max(4, ghHere*0.20) + vOff;
+      const B = bandBack + d*(bandFront - bandBack);
       const p = kids[i];
       p.style.left = x.toFixed(2)+'%';
       p.style.bottom = B.toFixed(2)+'%';
@@ -881,6 +915,7 @@ function renderDecorScene(){
   if(!layer) return;
   layer.innerHTML = '';
   const gh = S.groundH || CONFIG.defaultGroundH;
+  const split = !!S.splitScreen, ghR = split ? (S.groundH2||CONFIG.defaultGroundH) : gh, splitAt = split ? (S.splitAt||50) : 100;
   DECOR.forEach(d=>{
     if(decorLvl(d.id) < 1) return;
     const el = document.createElement('div');
@@ -888,7 +923,7 @@ function renderDecorScene(){
     el.textContent = d.em;
     el.style.fontSize = (d.size || 40) + 'px';   // ขนาดแยกทีละชิ้น (ไม่ใส่ใน CONFIG = 40)
     el.style.left = d.pos + '%';
-    el.style.bottom = gh + '%';   // ตั้งนิ่งที่ขอบบนพื้นดิน — แถบหญ้าบังโคนให้เหมือนปักในหญ้า
+    el.style.bottom = ((split && d.pos >= splitAt) ? ghR : gh) + '%';   // ตั้งที่ขอบบนพื้นดินตามฝั่งจอ — แถบหญ้าบังโคนให้เหมือนปักในหญ้า
     if(typeof d.action === 'function'){   // 🚀 ของตกแต่งที่คลิกได้ — มี action เท่านั้นถึงเปิดรับคลิก (ไม่มี = ไม่ทำอะไร)
       el.classList.add('travel');
       el.style.pointerEvents = 'auto';
@@ -1029,6 +1064,7 @@ function doPrestige(){
   // เก็บค่าตั้งค่า wallpaper ไว้ (ตำแหน่ง/ขนาดฟาร์ม/พื้นดิน/แถบผัก) — ไม่ให้หายตอนรีเบิร์ธ
   const keepLayout = {
     fieldPos:S.fieldPos, fieldScale:S.fieldScale, fieldBottom:S.fieldBottom, groundH:S.groundH,
+    groundH2:S.groundH2, splitScreen:S.splitScreen, splitAt:S.splitAt,
     seedPos:S.seedPos, seedScale:S.seedScale, seedBottom:S.seedBottom,
   };
   S=freshState();
@@ -1074,6 +1110,13 @@ function bindUI(){
   $('#bottomRange').onchange=save;
   $('#groundRange').oninput=e=>{ S.groundH=+e.target.value; applyLayout(); };
   $('#groundRange').onchange=save;
+  // ---- แบ่งหน้าจอ 2 จอ (ตั้งความสูงพื้นซ้าย/ขวาแยกกัน) ----
+  const splitBtn=$('#splitBtn');
+  if(splitBtn) splitBtn.onclick=()=>{ S.splitScreen=!S.splitScreen; applyLayout(); refreshSettingUI(); save(); };
+  const grR=$('#groundRRange');
+  if(grR){ grR.oninput=e=>{ S.groundH2=+e.target.value; applyLayout(); }; grR.onchange=save; }
+  const spAt=$('#splitAtRange');
+  if(spAt){ spAt.oninput=e=>{ S.splitAt=+e.target.value; applyLayout(); }; spAt.onchange=save; }
   // ---- ตั้งค่าแถบเลือกผัก ----
   document.querySelectorAll('#seedPosBtns button').forEach(b=>{
     b.onclick=()=>{ S.seedPos=b.dataset.seedpos; applyLayout(); refreshSettingUI(); save(); };
@@ -1142,6 +1185,11 @@ function refreshSettingUI(){
     b.classList.toggle('on', +b.dataset.scale===S.fieldScale));
   $('#bottomRange').value = S.fieldBottom;
   $('#groundRange').value = S.groundH;
+  const splitBtn=$('#splitBtn');
+  if(splitBtn){ splitBtn.textContent = S.splitScreen?'เปิด':'ปิด'; splitBtn.classList.toggle('on', !!S.splitScreen); }
+  if($('#groundRRange')) $('#groundRRange').value = S.groundH2||CONFIG.defaultGroundH;
+  if($('#splitAtRange')) $('#splitAtRange').value = S.splitAt||50;
+  document.querySelectorAll('.splitRow').forEach(r=> r.style.opacity = S.splitScreen?'1':'.4');
   document.querySelectorAll('#seedPosBtns button').forEach(b=>
     b.classList.toggle('on', b.dataset.seedpos===S.seedPos));
   document.querySelectorAll('#seedScaleBtns button').forEach(b=>
