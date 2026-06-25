@@ -176,8 +176,9 @@ const CONFIG = {
     {id: 'topiary',  em: '🌳', nm: 'ต้นไม้นำโชค',       desc: 'เพิ่มโอกาสผักทองคำ',      type: 'golden', per: 0.012, base: 3, mult: 1.7, max: 10, pos: 72, size: 50},
     {id: 'crystal',  em: '🔮', nm: 'ลูกแก้วพิศวง',      desc: 'เพิ่มโอกาสผักกลายพันธุ์',  type: 'mutant', per: 0.004, base: 5, mult: 1.9, max: 8,  pos: 80, size: 50},
     {id: 'statue',   em: '🗿', nm: 'รูปปั้นโบราณ',      desc: 'ขายผักได้แพงขึ้น (มาก)',  type: 'sell',   per: 0.08,  base: 6, mult: 1.8, max: 10, pos: 88, size: 150},
-    // 🚀 ยานเดินทาง — type 'travel' ไม่ให้โบนัส (decorSum ข้าม) · goto = คลิกไอคอนบนฟาร์มแล้วไปแมปนี้
-    {id: 'apollo',   em: '🚀', nm: 'ยาน Apollo 11',     desc: 'ซื้อแล้วคลิกยานบนฟาร์มเพื่อไปดวงจันทร์', type: 'travel', per: 0, base: 10, mult: 1, max: 1, pos: 4, size: 55, goto: 'moon.html'},
+    // 🚀 ยานเดินทาง — type: null = ไม่มีโบนัส (decorSum ข้าม) · action = ฟังก์ชันที่เรียกเมื่อคลิกไอคอนบนฟาร์ม
+    //    หมายเหตุ: action แยกจาก type → ของตกแต่งตัวไหนก็แปะ action เพิ่มได้
+    {id: 'apollo',   em: '🚀', nm: 'ยาน Apollo 11',     desc: 'ซื้อแล้วคลิกยานบนฟาร์มเพื่อไปดวงจันทร์', type: null, per: 0, base: 10, mult: 1, max: 1, pos: 4, size: 55, action: ()=>{ location.href='moon.html'; }},
   ],
 
   // ----- สภาพอากาศ: grow=ตัวคูณความเร็วโต, next=[min,max] วินาทีที่อยู่ -----

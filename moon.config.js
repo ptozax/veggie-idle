@@ -47,9 +47,12 @@ const CONFIG = {
   spiritGrowPer: 0.02,
 
   // ----- 🚀 การเดินทาง — กลับโลกไม่ต้องปลดล็อก (lock: null) -----
-  travel: {
-    target: 'index.html',
+  menu_button: {
     label: '🌍 เดินทางกลับโลก (ฟาร์ม)',
+    action: ()=>{ location.href='index.html'; },                          // ★ ใส่ฟังก์ชันตรงนี้ให้ปุ่มทำงาน (ปุ่มเรียกฟังก์ชันนี้ตอนคลิก)
+                                           //   เช่น  action: ()=>{ toast('🚀 พร้อมเดินทาง!'); }
+                                           //   หรือถ้าอยากให้เปลี่ยนหน้า: action: ()=>{ location.href='index.html'; }
+                                           //   ถ้าเป็น null → คลิกแล้วแค่ save() ไม่ทำอะไรต่อ
     lock: null,
   },
 

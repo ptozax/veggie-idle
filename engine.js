@@ -839,7 +839,7 @@ function renderFertShop(){
 
 // ---------- 🏯 ของตกแต่ง ----------
 function decorEffText(d){
-  if(d.type==='travel') return 'คลิกยานบนฟาร์มเพื่อเดินทาง';
+  if(typeof d.action === 'function') return 'คลิกยานบนฟาร์มเพื่อเดินทาง';   // ของที่คลิกได้ (มี action) — ไม่ผูกกับ type
   const e = decorLvl(d.id) * d.per;
   if(d.type==='sell')   return `ขาย +${Math.round(e*100)}%`;
   if(d.type==='grow')   return `โต +${Math.round(e*100)}%`;
@@ -862,12 +862,12 @@ function renderDecorScene(){
     el.style.fontSize = (d.size || 40) + 'px';   // ขนาดแยกทีละชิ้น (ไม่ใส่ใน CONFIG = 40)
     el.style.left = d.pos + '%';
     el.style.bottom = gh + '%';   // ตั้งนิ่งที่ขอบบนพื้นดิน — แถบหญ้าบังโคนให้เหมือนปักในหญ้า
-    if(d.goto){                   // 🚀 ของตกแต่งที่คลิกเดินทางได้ (เช่น ยาน Apollo) — เปิดรับคลิก + ทำให้สังเกตเห็น
+    if(typeof d.action === 'function'){   // 🚀 ของตกแต่งที่คลิกได้ — มี action เท่านั้นถึงเปิดรับคลิก (ไม่มี = ไม่ทำอะไร)
       el.classList.add('travel');
       el.style.pointerEvents = 'auto';
       el.style.cursor = 'pointer';
       el.title = 'คลิกเพื่อเดินทาง 🚀';
-      el.onclick = ()=>{ save(); location.href = d.goto; };
+      el.onclick = ()=>{ save(); d.action(); };   // เซฟก่อนเสมอ แล้วเรียกฟังก์ชัน
     }
     layer.appendChild(el);
   });
@@ -892,7 +892,7 @@ function renderDecorShop(){
       if(S.spirit < cost){ toast('✨ Spirit ไม่พอ — ต้องมี '+fmt(cost)); return; }
       S.spirit -= cost;
       S.decor[d.id] = lv+1;
-      if(d.type==='travel') toast(`${d.em} ซื้อ${d.nm}แล้ว! คลิกยานบนฟาร์มเพื่อเดินทาง`);
+      if(typeof d.action === 'function') toast(`${d.em} ซื้อ${d.nm}แล้ว! คลิกยานบนฟาร์มเพื่อเดินทาง`);
       else if(lv===0) toast('🏯 วาง '+d.nm+' ลงฟาร์มแล้ว!');
       updateHUD(); renderDecorShop(); renderDecorScene(); save();
     };
@@ -1085,13 +1085,16 @@ function bindUI(){
   updateHUD();
   updateBoostBtn();
 }
-// ---- 🚀 ปุ่มเดินทางในเมนู (ผูกตาม CONFIG.travel) — ใช้ฝั่งจันทร์เพื่อกลับโลก
+// ---- 🚀 ปุ่มในเมนู (ผูกตาม CONFIG.menu_button) — คลิกแล้วเรียกฟังก์ชันที่กำหนดใน config
 //      ฝั่งฟาร์มไม่มีปุ่มนี้แล้ว (เดินทางโดยคลิกไอคอนยาน 🚀 บนฉาก — ดู renderDecorScene) ----
 function bindTravel(){
-  const btn = $('#travelBtn'); const t = CONFIG.travel;
+  const btn = $('#travelBtn'); const t = CONFIG.menu_button;
   if(!btn || !t) return;                 // ไม่มีปุ่ม/ไม่มี config → ข้าม
   btn.textContent = t.label;
-  btn.onclick = ()=>{ save(); location.href = t.target; };
+  btn.onclick = ()=>{
+    save();                                         // เซฟก่อนเสมอ
+    if(typeof t.action === 'function') t.action();  // มีฟังก์ชันใน config → เรียกฟังก์ชัน
+  };
 }
 function openModal(id){
   document.querySelectorAll('.modal').forEach(m=>m.classList.remove('show'));
