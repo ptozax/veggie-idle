@@ -482,11 +482,7 @@ function popMiniGain(val, mutant, golden){
   const icon = document.querySelector('#miniField .mini-icon'); if(!icon) return;
   const txt = (mutant?'🌈':golden?'✨':'🪙')+'+'+fmt(val);
   const col = mutant?'#54e0ff':golden?'#ffd34d':'#7ed957';
-  floatText(icon, txt, col);
-  // เด้งย่อ-ขยายไอคอนด้วย Web Animations API (ไม่ชนกับ CSS bob ตอนผักพร้อม)
-  if(icon.animate) icon.animate(
-    [{transform:'scale(1)'},{transform:'scale(1.3)'},{transform:'scale(1)'}],
-    {duration:350, easing:'ease'});
+  floatText(icon, txt, col);   // เด้งเฉพาะเลข +999 — ตัวไอคอนบ้านอยู่นิ่ง
 }
 
 // สร้างไอคอนฟาร์มย่อ (อิโมจิวางบนพื้นแบบของตกแต่ง) — ครั้งเดียว
