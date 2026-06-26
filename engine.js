@@ -50,6 +50,7 @@ function freshState(){
     seedPos: CONFIG.defaultSeedPos,
     seedScale: CONFIG.defaultSeedScale,
     seedBottom: CONFIG.defaultSeedBottom,
+    fieldHidden: false,            // ซ่อนสวนเต็ม → แสดงเป็นแปลงผักแบบย่อบนพื้น
     lastSave: Date.now(),
   };
 }
@@ -311,6 +312,13 @@ function applyLayout(){
       sb.style.transform=`translateX(-50%) scale(${ss})`;
     }
   }
+
+  // ----- แปลงผักแบบย่อ — วางบนพื้นที่ระดับขอบหญ้าแบบเดียวกับ "ของตกแต่ง" -----
+  const mf = $('#miniField');
+  if(mf){
+    mf.style.bottom = gh + '%';   // ปักที่ขอบบนพื้นดิน เหมือน .decor-item (renderDecorScene)
+    mf.style.left = S.fieldPos==='left' ? '12%' : S.fieldPos==='right' ? '88%' : '50%';
+  }
 }
 
 function gridColsFor(n){
@@ -424,6 +432,83 @@ function renderPlot(i){
 }
 
 // =================================================================
+//  แปลงผักแบบย่อ (ซ่อนสวน) — โหมด wallpaper สะอาดตา
+// =================================================================
+// เปิด/ปิดการซ่อนสวน: ซ่อนแปลงเต็ม+แถบผัก+คนสวน แล้วโชว์แปลงย่อบนพื้น
+function setFieldHidden(hidden){
+  S.fieldHidden = !!hidden;
+  document.body.classList.toggle('hide-field', S.fieldHidden);
+  const btn = $('#hideFieldBtn');
+  if(btn){
+    btn.textContent = S.fieldHidden ? '🌾 แสดงสวน' : '🌿 ซ่อนสวน';
+    btn.classList.toggle('on', S.fieldHidden);
+  }
+  if(S.fieldHidden) buildMiniField();
+  // หมายเหตุ: ไม่ save() ที่นี่ — ถูกเรียกตอน init ก่อน computeOffline() ด้วย (กัน lastSave ถูกเขียนทับ)
+}
+
+// เก็บเกี่ยวแบบเงียบ — ใช้ตอนสวนถูกซ่อน · คืนค่าเหรียญที่ได้เพื่อเอาไปเด้งรวม
+function harvestSilent(i){
+  const p = S.plots[i]; if(!p) return 0;
+  const c = crop(p.crop); if(!c) return 0;
+  const val = sellValue(c, p.golden, p.mutant);
+  S.coins += val; S.totalEarned += val;
+  S.mastery[c.id] = (S.mastery[c.id]||0)+1;
+  questProgress(c.id);
+  const fc = fertDropChance(); if(fc>0 && Math.random() < fc) S.fert += 1;
+  const golden = p.golden, mutant = p.mutant;
+  S.plots[i] = null;
+  if(S.auto) autoPlantBest(i);
+  return { val, golden, mutant };
+}
+
+// ดูแลสวนตอนซ่อน (คนสวนหยุดทำงาน) — เก็บผักสุก & ปลูกต่อถ้าเปิดอัตโนมัติ
+function tendHidden(){
+  let changed = false, gained = 0, hadGold = false, hadMut = false;
+  for(let i=0;i<S.plotCount;i++){
+    if(isReady(S.plots[i])){
+      const r = harvestSilent(i);
+      if(r){ gained += r.val; hadGold = hadGold||r.golden; hadMut = hadMut||r.mutant; }
+      changed = true;
+    }
+    else if(!S.plots[i] && S.auto){ if(autoPlantBest(i)) changed=true; }
+  }
+  if(gained > 0) popMiniGain(gained, hadMut, hadGold);   // เด้ง +999 รวมต่อ tick
+  if(changed) updateHUD();
+}
+
+// เด้งตัวเลขเหรียญลอยขึ้นจากไอคอนฟาร์มย่อ
+function popMiniGain(val, mutant, golden){
+  const icon = document.querySelector('#miniField .mini-icon'); if(!icon) return;
+  const txt = (mutant?'🌈':golden?'✨':'🪙')+'+'+fmt(val);
+  const col = mutant?'#54e0ff':golden?'#ffd34d':'#7ed957';
+  floatText(icon, txt, col);
+  // เด้งย่อ-ขยายไอคอนด้วย Web Animations API (ไม่ชนกับ CSS bob ตอนผักพร้อม)
+  if(icon.animate) icon.animate(
+    [{transform:'scale(1)'},{transform:'scale(1.3)'},{transform:'scale(1)'}],
+    {duration:350, easing:'ease'});
+}
+
+// สร้างไอคอนฟาร์มย่อ (อิโมจิวางบนพื้นแบบของตกแต่ง) — ครั้งเดียว
+function buildMiniField(){
+  const mf = $('#miniField'); if(!mf) return;
+  const icon = CONFIG.theme.miniIcon || '🏡';
+  mf.innerHTML = `<span class="mini-icon">${icon}</span>`;
+  mf.title = 'แตะเพื่อแสดงสวน';
+  mf.onclick = ()=>{ setFieldHidden(false); save(); };
+  renderMiniField();
+}
+
+// อัปเดตสถานะไอคอนฟาร์มย่อ (เรืองเขียว/กระดิกเมื่อมีผักพร้อมเก็บ)
+function renderMiniField(){
+  const mf = $('#miniField'); if(!mf || !S.fieldHidden) return;
+  if(!mf.querySelector('.mini-icon')){ buildMiniField(); return; }
+  let ready = 0;
+  for(let i=0;i<S.plotCount;i++){ if(isReady(S.plots[i])) ready++; }
+  mf.classList.toggle('has-ready', ready>0);
+}
+
+// =================================================================
 //  คนสวนเดินทำงานอัตโนมัติ
 // =================================================================
 let _gx = 10, _gy = 60;   // ตำแหน่งคนสวนปัจจุบัน (หน่วย vw/vh) — เก็บใน JS แทนการ parse style ทุกครั้ง
@@ -439,7 +524,7 @@ function walkTo(xPct, yPct, done){
 }
 
 function gardenerLoop(){
-  if(document.hidden){ setTimeout(gardenerLoop, 1500); return; }
+  if(document.hidden || S.fieldHidden){ setTimeout(gardenerLoop, 1500); return; }
   let ready=-1, empty=-1;
   for(let i=0;i<S.plotCount;i++){
     if(ready<0 && isReady(S.plots[i])) ready=i;
@@ -475,11 +560,12 @@ function gardenerLoop(){
 
 function autoPlantBest(i){
   const selC = crop(S.selected);
-  if(selC && S.totalEarned>=selC.unlock && S.coins>=selC.cost){ plant(i, S.selected); return; }
+  if(selC && S.totalEarned>=selC.unlock && S.coins>=selC.cost){ return plant(i, S.selected); }
   for(let k=CROPS.length-1;k>=0;k--){
     const c = CROPS[k];
-    if(S.totalEarned>=c.unlock && S.coins>=c.cost){ plant(i, c.id); return; }
+    if(S.totalEarned>=c.unlock && S.coins>=c.cost){ return plant(i, c.id); }
   }
+  return false;
 }
 
 // =================================================================
@@ -490,7 +576,8 @@ function tick(dt){
   weatherTick(dt);
   seasonTick(dt);
   marketTick(dt);
-  for(let i=0;i<S.plotCount;i++) renderPlot(i);
+  if(S.fieldHidden){ tendHidden(); renderMiniField(); }
+  else { for(let i=0;i<S.plotCount;i++) renderPlot(i); }
   updateScene();
   updateBoostBtn();
 }
@@ -1067,6 +1154,8 @@ function bindUI(){
   };
   $('#autoBtn').onclick=()=>{ S.auto=!S.auto; setAuto(); };
   setAuto();
+  $('#hideFieldBtn').onclick=()=>{ setFieldHidden(!S.fieldHidden); save(); };
+  setFieldHidden(S.fieldHidden);   // สะท้อนสถานะที่เซฟไว้ตอนเริ่มเกม (ยังไม่ save — กัน lastSave ทับ)
 
   document.querySelectorAll('.close').forEach(x=>{
     x.onclick=()=>$('#'+x.dataset.close).classList.remove('show');
