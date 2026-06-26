@@ -313,12 +313,26 @@ function applyLayout(){
     }
   }
 
-  // ----- แปลงผักแบบย่อ — วางบนพื้นที่ระดับขอบหญ้าแบบเดียวกับ "ของตกแต่ง" -----
+  // ----- แปลงผักแบบย่อ — วางบนพื้นแบบ "ของตกแต่ง" (ตำแหน่ง/ขนาดตั้งได้ใน config.theme.miniIcon) -----
   const mf = $('#miniField');
   if(mf){
-    mf.style.bottom = gh + '%';   // ปักที่ขอบบนพื้นดิน เหมือน .decor-item (renderDecorScene)
-    mf.style.left = S.fieldPos==='left' ? '12%' : S.fieldPos==='right' ? '88%' : '50%';
+    const cfg = miniCfg();
+    mf.style.bottom = (cfg.y!=null ? cfg.y : gh) + '%';   // y=null → ระดับขอบสนามหญ้า (เหมือน .decor-item)
+    mf.style.left = (cfg.x!=null ? cfg.x
+      : (S.fieldPos==='left' ? 12 : S.fieldPos==='right' ? 88 : 50)) + '%';
   }
+}
+
+// อ่าน config ไอคอนสวนย่อ — รองรับทั้งแบบสตริง ('🏡') และ object ({em,size,x,y})
+function miniCfg(){
+  const m = CONFIG.theme.miniIcon;
+  if(typeof m === 'string') return { em:m, size:54, x:null, y:null };
+  return {
+    em:   (m && m.em)   || '🏡',
+    size: (m && m.size) || 54,
+    x:    (m && m.x   != null) ? m.x : null,
+    y:    (m && m.y   != null) ? m.y : null,
+  };
 }
 
 function gridColsFor(n){
@@ -488,10 +502,11 @@ function popMiniGain(val, mutant, golden){
 // สร้างไอคอนฟาร์มย่อ (อิโมจิวางบนพื้นแบบของตกแต่ง) — ครั้งเดียว
 function buildMiniField(){
   const mf = $('#miniField'); if(!mf) return;
-  const icon = CONFIG.theme.miniIcon || '🏡';
-  mf.innerHTML = `<span class="mini-icon">${icon}</span>`;
+  const cfg = miniCfg();
+  mf.innerHTML = `<span class="mini-icon" style="font-size:${cfg.size}px">${cfg.em}</span>`;
   mf.title = 'แตะเพื่อแสดงสวน';
   mf.onclick = ()=>{ setFieldHidden(false); save(); };
+  applyLayout();          // อัปเดตตำแหน่งตาม config ทันที
   renderMiniField();
 }
 
